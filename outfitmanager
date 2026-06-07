@@ -8,13 +8,21 @@ STORAGE_DIRECTORY_OUTFIT = MAIN_DIRECTORY .. 'profile_outfit_studio_' .. charact
 local URL_VALIDADOR = "https://script.google.com/macros/s/AKfycbzSNEW3KPJQ1XX9vbctkT3hezMLVPfDbLXBnHekI6B8yGa95_IREWJapsDPf5mLOQio4g/exec"
 
 local function verificarLicenca(callback)
-    if storageProfilesOutfit.keyAtivacao == "" then callback(false) return end
+    if not storageProfilesOutfit.keyAtivacao or storageProfilesOutfit.keyAtivacao == "" then callback(false) return end
     
-    HTTP.get(URL_VALIDADOR .. "?key=" .. storageProfilesOutfit.keyAtivacao, function(code, body)
-        -- Limpa a resposta de espaços ou caracteres invisíveis
-        local respostaLimpa = tostring(body):gsub("%s+", "")
+    local url = URL_VALIDADOR .. "?key=" .. storageProfilesOutfit.keyAtivacao
+    
+    HTTP.get(url, function(body, err)
+        if err then 
+            warn("Erro de conexão: " .. tostring(err))
+            callback(false) 
+            return 
+        end
         
-        if respostaLimpa:find("VALIDO") then
+        -- Limpa a string de qualquer caractere de controle ou espaços
+        local cleanBody = tostring(body):gsub("%c", ""):gsub("%s", "")
+        
+        if cleanBody == "VALIDO" then
             callback(true)
         else
             callback(false)
@@ -103,7 +111,7 @@ BotSwitch
   margin-right: 7
   margin-left: 7
   text-align: center
-  text: Visuais [Tuku]2
+  text: Visuais [Tuku]
 ]], panel or modules.game_bot.contentsPanel)
 
 outfitInterface = setupUI([[
@@ -297,7 +305,7 @@ keyInterface.btnAtivar.onClick = function()
         if valido then
             keyInterface:hide()
             refreshGrid()
-            modules.game_textmessage.displayFailureMessage("Licenca Ativada com Sucesso!")
+            modules.game_textmessage.displayFailureMessage("Licenca Ativada!")
         else
             modules.game_textmessage.displayFailureMessage("[ERRO] Chave Invalida") 
         end
@@ -314,17 +322,9 @@ outfitIcon.onMouseRelease = function(w, mPos, mBtn)
     return true
 end
 
-macro(1000, function()
+macro(5000, function()
     if not g_game.isOnline() or not storageProfilesOutfit.ativo then return end
     verificarLicenca(function(valido)
         if not valido then storageProfilesOutfit.ativo = false outfitIcon:setOn(false) return end
-        local outfit = player:getOutfit()
-        local dOutfitId = tonumber(storageProfilesOutfit.atual.id) or 128
-        local dAuraId = tonumber(storageProfilesOutfit.auraAtiva) or 0
-        local mudouAlgo = false
-        if outfit.type ~= dOutfitId then outfit.type = dOutfitId mudouAlgo = true end
-        if outfit.aura > 0 then if dAuraId > 0 and outfit.aura ~= dAuraId then outfit.aura = dAuraId mudouAlgo = true end
-        else if outfit.aura ~= 0 then outfit.aura = 0 mudouAlgo = true end end
-        if mudouAlgo then outfit.addons = 3 player:setOutfit(outfit) end
     end)
 end)
