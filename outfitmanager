@@ -232,3 +232,165 @@ local function addOutfitToGrid(id)
         if isFavorito(id) then
             for i, v in ipairs(storageProfilesOutfit.favoritos) do
                 if v.id == id then
+                    table.remove(storageProfilesOutfit.favoritos, i)
+                    break
+                end
+            end
+        else
+            table.insert(storageProfilesOutfit.favoritos, {id = id})
+        end
+        salvarConfigOutfit()
+        
+        if mode == "favs" then
+            refreshGrid()
+        else
+            if isFavorito(id) then
+                widget.btnFav:setText("★")
+                widget.btnFav:setColor("yellow")
+            else
+                widget.btnFav:setText("☆")
+                widget.btnFav:setColor("white")
+            end
+        end
+    end
+end
+
+function refreshGrid()
+    outfitInterface.itemList:destroyChildren()
+
+    if mode == "gallery" then
+        outfitInterface.backButton:show()
+        outfitInterface.nextButton:show()
+        outfitInterface.pageLabel:show()
+
+        local maxLimit = math.min(currentOffset + pageSize, lastId)
+        for i = currentOffset, maxLimit do
+            addOutfitToGrid(i)
+        end
+        outfitInterface.pageLabel:setText(currentOffset .. "/" .. lastId)
+    else
+        outfitInterface.backButton:hide()
+        outfitInterface.nextButton:hide()
+        outfitInterface.pageLabel:hide()
+
+        if #storageProfilesOutfit.favoritos == 0 then
+            local label = UI.createWidget("Label", outfitInterface.itemList)
+            label:setText("Nenhum favorito salvo.")
+            label:setTextAlign(AlignCentering)
+            label:setMarginTop(20)
+            return
+        end
+
+        for _, fav in ipairs(storageProfilesOutfit.favoritos) do
+            addOutfitToGrid(fav.id)
+        end
+    end
+end
+
+outfitInterface.tabGallery.onClick = function()
+    mode = "gallery"
+    refreshGrid()
+end
+
+outfitInterface.tabFavs.onClick = function()
+    mode = "favs"
+    refreshGrid()
+end
+
+outfitInterface.backButton.onClick = function()
+    if currentOffset > firstId then
+        currentOffset = currentOffset - pageSize - 1
+        refreshGrid()
+    end      
+end
+
+outfitInterface.nextButton.onClick = function()
+    if currentOffset + pageSize < lastId then
+        currentOffset = currentOffset + pageSize + 1
+        refreshGrid()
+    end
+end
+
+outfitInterface.closeButton.onClick = function()
+    outfitInterface:hide()
+end
+
+keyInterface.btnAtivar.onClick = function()
+    local digitada = keyInterface.keyInput:getText():trim()
+    if keysValidas[digitada] then
+        storageProfilesOutfit.keyAtivacao = digitada
+        salvarConfigOutfit()
+        keyInterface:hide()
+        outfitInterface:show()
+        outfitInterface:raise()
+        outfitInterface:focus()
+        refreshGrid()
+    else
+        modules.game_textmessage.displayFailureMessage("[ERRO] Key Invalida!")
+    end
+end
+
+outfitIcon:setOn(storageProfilesOutfit.ativo)
+
+outfitIcon.onMouseRelease = function(widget, mousePos, mouseButton)
+    if mouseButton == 1 then
+        if not verificarLicenca() then
+            keyInterface:show()
+            keyInterface:raise()
+            keyInterface:focus()
+            return true
+        end
+        storageProfilesOutfit.ativo = not storageProfilesOutfit.ativo
+        widget:setOn(storageProfilesOutfit.ativo)
+        salvarConfigOutfit()
+    elseif mouseButton == 2 then
+        if not verificarLicenca() then
+            keyInterface:show()
+            keyInterface:raise()
+            keyInterface:focus()
+            return true
+        end
+        outfitInterface:show()
+        outfitInterface:raise()
+        outfitInterface:focus()
+        refreshGrid()
+    end
+    return true
+end
+
+-- Motor de atualizacao ultra rapido (1ms) para escadas/andares
+macro(1, function()
+    if not storageProfilesOutfit.ativo then return end
+    if not g_game.isOnline() then return end
+    if not verificarLicenca() then 
+        storageProfilesOutfit.ativo = false
+        outfitIcon:setOn(false)
+        return 
+    end
+
+    local outfit = player:getOutfit()
+    local desejadoId = storageProfilesOutfit.atual.id
+
+    if outfit.type ~= desejadoId then
+        outfit.type = desejadoId
+        outfit.addons = 3
+        player:setOutfit(outfit)
+    end
+end)
+
+-- Motor de rotacao dos bonequinhos da interface (500ms)
+local directionCounter = 0
+macro(500, function()
+    if not outfitInterface:isVisible() then return end
+    for _, c in ipairs(outfitInterface.itemList:getChildren()) do    
+        if c.creature then
+            c.creature:setDirection(directionCounter)
+        end
+    end
+    directionCounter = directionCounter + 1
+    if directionCounter > 3 then directionCounter = 0 end
+end)
+
+if verificarLicenca() then
+    refreshGrid()
+end
