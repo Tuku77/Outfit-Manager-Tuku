@@ -7,17 +7,12 @@ if not g_resources.directoryExists(MAIN_DIRECTORY) then
 end
 
 storageProfilesOutfit = storageProfilesOutfit or {
-    favoritos = {
-        {id = 128, nome = "Citizen (Padrao)", mount = 0},
-        {id = 325, nome = "Madara", mount = 0},
-        {id = 410, nome = "Kurenai", mount = 0}
-    },
+    favoritos = {},
     atual = {id = 128, mount = 0},
     ativo = false,
     keyAtivacao = ""
 }
 
--- LISTA DE KEYS REMOTA: Altere aqui no GitHub e atualiza para todo mundo na hora!
 local keysValidas = {
     ["TUKU-CHAVE-MESTRA"] = true,
     ["TUKU-TESTE"] = true,
@@ -79,9 +74,6 @@ MainWindow
     margin-top: 12
 ]], g_ui.getRootWidget())
 
-local corBotaoCustom = "red"
-if corText then corBotaoCustom = corText end
-
 outfitIcon = setupUI([[
 BotSwitch
   id: outfitSwitch
@@ -95,19 +87,19 @@ BotSwitch
 
 outfitInterface = setupUI([[
 MainWindow
-  text: Outfit Manager [By Tuku]
-  size: 420 300
+  text: Outfit Gallery [By Tuku]
+  size: 300 400
   anchors.centerIn: parent
   visible: false
 
   TextList
     id: outfitList
     anchors.left: parent.left
+    anchors.right: parent.right
     anchors.top: parent.top
+    anchors.bottom: separator.top
+    margin-bottom: 8
     padding: 1
-    size: 210 210
-    margin-bottom: 3
-    margin-left: 3
     vertical-scrollbar: outfitScrollBar
   
   VerticalScrollBar
@@ -117,50 +109,6 @@ MainWindow
     anchors.right: outfitList.right
     step: 14
     pixels-scroll: true
-
-  Label
-    id: nameLabel
-    anchors.left: outfitList.right
-    anchors.top: outfitList.top
-    text: Nome do Visual:
-    margin-top: 10
-    margin-left: 15
-
-  TextEdit
-    id: outName
-    anchors.right: parent.right
-    anchors.left: outfitList.right
-    anchors.top: nameLabel.bottom
-    margin-top: 5
-    margin-left: 15
-    margin-right: 15
-    
-  Label
-    id: idLabel
-    anchors.left: outfitList.right
-    anchors.top: outName.bottom
-    text: ID da Roupa:
-    margin-top: 10
-    margin-left: 15
-
-  TextEdit
-    id: outID
-    anchors.right: parent.right
-    anchors.left: outfitList.right
-    anchors.top: idLabel.bottom
-    margin-top: 5
-    margin-left: 15
-    margin-right: 15
-
-  Button
-    id: addOutfit
-    anchors.left: outfitList.right
-    anchors.right: parent.right
-    anchors.top: outID.bottom
-    margin-top: 15
-    margin-left: 15
-    margin-right: 15
-    text: Adicionar
 
   HorizontalSeparator
     id: separator
@@ -193,61 +141,41 @@ UIWidget
   background-color: alpha
   text-offset: 5 0
   focusable: true
-  height: 16
+  height: 18
 
   Label
     id: textToSet
     anchors.left: parent.left
     anchors.verticalCenter: parent.verticalCenter
     margin-left: 5
-
-  Button
-    id: remove
-    text: x
-    anchors.right: parent.right
-    margin-right: 5
-    width: 15
-    height: 15
 ]]
 
 function refreshOutfitList()
-    if not storageProfilesOutfit.favoritos then return end
     outfitInterface.outfitList:destroyChildren()
-
-    for index, value in ipairs(storageProfilesOutfit.favoritos) do
+    
+    local gameOutfits = g_game.getOutfits()
+    if not gameOutfits or #gameOutfits == 0 then
         local label = setupUI(outfitEntryTemplate, outfitInterface.outfitList)
-        label.textToSet:setText(string.format("%s [%d]", value.nome, value.id))
+        label.textToSet:setText("Nenhum visual encontrado")
+        return
+    end
+
+    for _, outfitData in ipairs(gameOutfits) do
+        local id = outfitData[1]
+        local nome = outfitData[2] or ("Outfit " .. id)
+        
+        local label = setupUI(outfitEntryTemplate, outfitInterface.outfitList)
+        label.textToSet:setText(string.format("%s [%d]", nome, id))
         label.textToSet:setFont("verdana-11px-rounded")
         
         label.onDoubleClick = function(widget)
             if not verificarLicenca() then return end
-            storageProfilesOutfit.atual.id = value.id
-            storageProfilesOutfit.atual.mount = value.mount
+            storageProfilesOutfit.atual.id = id
             salvarConfigOutfit()
-            player:setText("Visual: " .. value.nome)
+            player:setText("Visual: " .. nome)
             schedule(1200, function() player:clearText() end)
         end
-
-        label.remove.onClick = function(widget)
-            table.remove(storageProfilesOutfit.favoritos, index)
-            salvarConfigOutfit()
-            refreshOutfitList()
-        end
     end
-end
-
-outfitInterface.addOutfit.onClick = function()
-    local name = outfitInterface.outName:getText():trim()
-    local id = tonumber(outfitInterface.outID:getText():trim())
-
-    if name == "" or not id then return end
-
-    table.insert(storageProfilesOutfit.favoritos, {id = id, nome = name, mount = 0})
-    salvarConfigOutfit()
-    refreshOutfitList()
-
-    outfitInterface.outName:setText("")
-    outfitInterface.outID:setText("")
 end
 
 outfitInterface.closeButton.onClick = function()
@@ -309,11 +237,9 @@ macro(1, function()
 
     local outfit = player:getOutfit()
     local desejadoId = storageProfilesOutfit.atual.id
-    local desejadoMount = storageProfilesOutfit.atual.mount
 
-    if outfit.type ~= desejadoId or outfit.mount ~= desejadoMount then
+    if outfit.type ~= desejadoId then
         outfit.type = desejadoId
-        outfit.mount = desejadoMount
         player:setOutfit(outfit)
     end
 end)
