@@ -79,7 +79,7 @@ MainWindow
     margin-top: 12
 ]], g_ui.getRootWidget())
 
--- Icone do Painel com Botao Aleatorio Acoplado ao lado
+-- Icone do Painel Ajustado com BotSwitch Real para o Dado
 outfitIconPanel = setupUI([[
 Panel
   height: 20
@@ -94,7 +94,7 @@ Panel
     text: Visuais [Tuku]
     width: 115
 
-  Button
+  BotSwitch
     id: btnRandom
     text: 🎲
     width: 25
@@ -104,7 +104,7 @@ Panel
 outfitIcon = outfitIconPanel.outfitSwitch
 btnRandomIcon = outfitIconPanel.btnRandom
 
--- Interface Principal Completa com Filtro de Busca
+-- Interface Principal
 outfitInterface = setupUI([[
 MainWindow
   text: OUTFIT STUDIO // TUKU
@@ -131,7 +131,6 @@ MainWindow
     width: 120
     height: 24
 
-  -- Barra de Busca Compacta
   TextEdit
     id: searchInput
     anchors.top: parent.top
@@ -306,7 +305,6 @@ function refreshGrid()
     outfitInterface.itemScrollPanel:destroyChildren()
 
     if mode == "gallery" then
-        -- Se houver um filtro digitado, mostra apenas o ID específico imediatamente
         if filtroTexto ~= "" then
             local targetId = tonumber(filtroTexto)
             if targetId and targetId >= 1 and targetId <= maxOutfits then
@@ -345,7 +343,6 @@ function refreshGrid()
     end
 end
 
--- Evento de Digitação da Barra de Busca
 outfitInterface.searchInput.onTextChange = function(widget, text)
     filtroTexto = text:trim()
     refreshGrid()
@@ -383,7 +380,7 @@ end
 outfitIcon:setOn(storageProfilesOutfit.ativo)
 btnRandomIcon:setOn(storageProfilesOutfit.modoAleatorio)
 
--- Evento do botão de dados (Modo Aleatório)
+-- Comportamento corrigido do BotSwitch do dado
 btnRandomIcon.onClick = function(widget)
     if not verificarLicenca() then
         keyInterface:show()
@@ -392,9 +389,6 @@ btnRandomIcon.onClick = function(widget)
     storageProfilesOutfit.modoAleatorio = not storageProfilesOutfit.modoAleatorio
     widget:setOn(storageProfilesOutfit.modoAleatorio)
     salvarConfigOutfit()
-    if storageProfilesOutfit.modoAleatorio then
-        modules.game_textmessage.displayStatusMessage("Modo Visual Aleatorio: ATIVADO")
-    end
 end
 
 outfitIcon.onMouseRelease = function(widget, mousePos, mouseButton)
@@ -424,21 +418,23 @@ outfitIcon.onMouseRelease = function(widget, mousePos, mouseButton)
 end
 
 -- ====================================================================
--- MOTOR SEGURO DE ATUALIZAÇÃO E SORTEIO (1ms)
+-- MOTOR SEGURO DE ATUALIZAÇÃO BASEADO EM CICLOS (1ms)
 -- ====================================================================
-local ultimoSorteio = 0
+local ciclosContador = 0
 
 macro(1, function()
     if not g_game.isOnline() then return end
     if not verificarLicenca() then return end
 
-    -- Lógica do Modo Aleatório (Muda o ID a cada 3 segundos se o switch principal e o dado estiverem ativos)
+    -- Sistema de rotação por contagem interna de ms pura (independente de os.time)
     if storageProfilesOutfit.ativo and storageProfilesOutfit.modoAleatorio then
-        local tempoAtual = os.time()
-        if tempoAtual - ultimoSorteio >= 3 then
+        ciclosContador = ciclosContador + 1
+        if ciclosContador >= 3000 then -- 3000 ms = 3 segundos exatos
             storageProfilesOutfit.atual.id = math.random(1, maxOutfits)
-            ultimoSorteio = tempoAtual
+            ciclosContador = 0
         end
+    else
+        ciclosContador = 0
     end
 
     -- Aplica o visual no player
