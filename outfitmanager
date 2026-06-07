@@ -39,16 +39,14 @@ MainWindow
   Button {id: btnAtivar, text: Desbloquear Script, anchors: {left: parent.left, right: parent.right, top: keyInput.bottom}, margin-top: 12}
 ]], g_ui.getRootWidget())
 
+-- FORÇANDO A CRIAÇÃO DO BOTÃO NA BARRA LATERAL DO BOT
 outfitIcon = setupUI([[
 BotSwitch
-  id: outfitSwitch
   height: 20
-  margin-top: 3
-  margin-right: 7
-  margin-left: 7
+  margin: 3
   text-align: center
-  text: Visuais [Tuku]2
-]], panel or modules.game_bot.contentsPanel)
+  text: Visuais [Tuku]1
+]], modules.game_bot.contentsPanel)
 
 outfitInterface = setupUI([[
 MainWindow
@@ -119,7 +117,6 @@ function refreshGrid()
     loadBatch()
 end
 
--- EVENTOS DE CLIQUE RESTAURADOS
 keyInterface.btnAtivar.onClick = function()
     local d = keyInterface.keyInput:getText():trim()
     if keysValidas[d] then storageProfilesOutfit.keyAtivacao = d salvarConfigOutfit() keyInterface:hide() refreshGrid()
@@ -129,4 +126,22 @@ end
 outfitIcon:setOn(storageProfilesOutfit.ativo)
 outfitIcon.onMouseRelease = function(w, mPos, mBtn)
     if not verificarLicenca() then keyInterface:show() keyInterface:raise() keyInterface:focus() return true end
-    if mBtn == 1 then storageProfilesOutfit.ativo = not storageProfilesOutfit.ativo w:setOn(storageProfilesOutfit.ativo) salvarConfigOutfit
+    if mBtn == 1 then storageProfilesOutfit.ativo = not storageProfilesOutfit.ativo w:setOn(storageProfilesOutfit.ativo) salvarConfigOutfit()
+    elseif mBtn == 2 then outfitInterface:show() outfitInterface:raise() outfitInterface:focus() refreshGrid() end
+    return true
+end
+
+outfitInterface.mainScrollBar.onScrollChange = function(w, v) if v >= w:getMaximum() - 50 then loadBatch() end end
+outfitInterface.searchInput.onTextChange = function(w, t) filtroTexto = t:trim() refreshGrid() end
+outfitInterface.tabGallery.onClick = function() mode="gallery" refreshGrid() end
+outfitInterface.tabAuras.onClick = function() mode="auras" refreshGrid() end
+outfitInterface.tabFavs.onClick = function() mode="favs" refreshGrid() end
+outfitInterface.closeButton.onClick = function() outfitInterface:hide() end
+
+macro(1, function()
+    if not g_game.isOnline() or not verificarLicenca() or not storageProfilesOutfit.ativo then return end
+    local o = player:getOutfit()
+    if o.type ~= tonumber(storageProfilesOutfit.atual.id) then 
+        o.type = tonumber(storageProfilesOutfit.atual.id) o.addons = 3 player:setOutfit(o) 
+    end
+end)
