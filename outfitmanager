@@ -1,29 +1,70 @@
--- Limpeza forçada para evitar conflitos de clique
+-- LIMPEZA DE SEGURANÇA (Resolve a duplicidade de botões e scrolls)
 if outfitIcon then outfitIcon:destroy() end
 if outfitInterface then outfitInterface:destroy() end
+if keyInterface then keyInterface:destroy() end
 
 MAIN_DIRECTORY = "/bot/" .. modules.game_bot.contentsPanel.config:getCurrentOption().text .. "/storage/"
 local characterName = g_game.getCharacterName()
 STORAGE_DIRECTORY_OUTFIT = MAIN_DIRECTORY .. 'profile_outfit_studio_' .. characterName .. '.json'
 
+local auraStart = 1000
+local auraEnd = 1100
+local maxOutfits = 2176
+
 if not g_resources.directoryExists(MAIN_DIRECTORY) then g_resources.makeDir(MAIN_DIRECTORY) end
 
-storageProfilesOutfit = storageProfilesOutfit or { favoritos = {}, atual = {id = 128}, auraAtiva = 0, ativo = false, keyAtivacao = "" }
+storageProfilesOutfit = storageProfilesOutfit or {
+    favoritos = {},
+    atual = {id = 128},
+    auraAtiva = 0,
+    ativo = false,
+    keyAtivacao = ""
+}
+
 local keysValidas = {["TUKU-CHAVE-MESTRA"] = true, ["TUKU-TESTE"] = true, ["NOVA-KEY-CLIENTE"] = true}
-local auraStart, auraEnd, maxOutfits = 1000, 1100, 2176 
 
-local function salvarConfigOutfit() pcall(function() g_resources.writeFileContents(STORAGE_DIRECTORY_OUTFIT, json.encode(storageProfilesOutfit, 2)) end) end
+local function carregarConfigOutfit()
+    if g_resources.fileExists(STORAGE_DIRECTORY_OUTFIT) then
+        local status, result = pcall(function() return json.decode(g_resources.readFileContents(STORAGE_DIRECTORY_OUTFIT)) end)
+        if status and type(result) == "table" then
+            for k, v in pairs(storageProfilesOutfit) do if result[k] == nil then result[k] = v end end
+            storageProfilesOutfit = result
+        end
+    end
+end
+
+local function salvarConfigOutfit()
+    pcall(function() g_resources.writeFileContents(STORAGE_DIRECTORY_OUTFIT, json.encode(storageProfilesOutfit, 2)) end)
+end
+
+carregarConfigOutfit()
+
 local function verificarLicenca() return keysValidas[storageProfilesOutfit.keyAtivacao] == true end
-local function isFavorito(id) for _, v in ipairs(storageProfilesOutfit.favoritos) do if v.id == id then return true end end return false end
+local function isFavorito(id)
+    for _, v in ipairs(storageProfilesOutfit.favoritos) do if v.id == id then return true end end
+    return false
+end
 
--- SINALIZADOR 1
+keyInterface = setupUI([[
+MainWindow
+  text: Ativacao de Licenca
+  size: 260 120
+  anchors.centerIn: parent
+  visible: false
+  TextEdit {id: keyInput, anchors: {left: parent.left, right: parent.right, top: parent.top}, margin-top: 15, text-align: center}
+  Button {id: btnAtivar, text: Desbloquear Script, anchors: {left: parent.left, right: parent.right, top: keyInput.bottom}, margin-top: 12}
+]], g_ui.getRootWidget())
+
 outfitIcon = setupUI([[
 BotSwitch
+  id: outfitSwitch
   height: 20
-  margin: 3
+  margin-top: 3
+  margin-right: 7
+  margin-left: 7
   text-align: center
   text: Visuais [Tuku]1
-]], modules.game_bot.contentsPanel)
+]], panel or modules.game_bot.contentsPanel)
 
 outfitInterface = setupUI([[
 MainWindow
@@ -34,8 +75,11 @@ MainWindow
   Button {id: tabGallery, text: OUTFITS, anchors: {top: parent.top, left: parent.left}, size: 90 24, margin: 5}
   Button {id: tabAuras, text: AURAS, anchors: {top: parent.top, left: tabGallery.right}, size: 90 24, margin: 5}
   Button {id: tabFavs, text: COLECAO, anchors: {top: parent.top, left: tabAuras.right}, size: 90 24, margin: 5}
-  TextList {id: itemScrollPanel, anchors: {left: parent.left, right: parent.right, top: tabGallery.bottom, bottom: parent.bottom}, margin: 10, vertical-scrollbar: mainScrollBar, layout: {type: grid, cell-size: 82 115, flow: true}}
-  VerticalScrollBar {id: mainScrollBar, anchors: {top: itemScrollPanel.top, bottom: itemScrollPanel.bottom, right: parent.right}, step: 60}
+  TextEdit {id: searchInput, anchors: {top: parent.top, right: parent.right}, size: 140 22, margin: 6, text-align: center}
+  -- Ajuste: anchors.right: parent.right reduzido com margin-right para tirar o espaço sobrando
+  TextList {id: itemScrollPanel, anchors: {left: parent.left, right: parent.right, top: tabGallery.bottom, bottom: closeButton.top}, margin-left: 12, margin-right: 62, margin-top: 12, margin-bottom: 10, padding: 6, vertical-scrollbar: mainScrollBar, layout: {type: grid, cell-size: 82 115, flow: true}}
+  VerticalScrollBar {id: mainScrollBar, anchors: {top: itemScrollPanel.top, bottom: itemScrollPanel.bottom, right: parent.right}, margin-right: 12, step: 60}
+  Button {id: closeButton, text: FECHAR, anchors: {right: parent.right, bottom: parent.bottom}, size: 65 22}
 ]], g_ui.getRootWidget())
 
 g_ui.loadUIFromString([[
@@ -51,52 +95,72 @@ TukuStudioWidget < UIWidget
 ]])
 
 local mode = "gallery"
+local filtroTexto = ""
+
+local function addOutfitToGrid(id)
+    local widget = UI.createWidget("TukuStudioWidget", outfitInterface.itemScrollPanel)
+    local tempOutfit = player:getOutfit()  
+    tempOutfit.type = id
+    tempOutfit.addons = 3
+    widget.creature:setOutfit(tempOutfit)
+    widget.txtId:setText("ID: " .. id)
+    widget.btnFav:setText(isFavorito(id) and "-" or "+")
+    widget.btnFav:setColor(isFavorito(id) and "#ff5555" or "#55ff55")
+
+    widget.select.onClick = function()
+        if not verificarLicenca() then return end
+        if mode == "auras" then storageProfilesOutfit.auraAtiva = id 
+        else storageProfilesOutfit.atual.id = id end
+        salvarConfigOutfit()
+    end
+
+    widget.btnFav.onClick = function()
+        if isFavorito(id) then
+            for i, v in ipairs(storageProfilesOutfit.favoritos) do if v.id == id then table.remove(storageProfilesOutfit.favoritos, i) break end end
+        else table.insert(storageProfilesOutfit.favoritos, {id = id}) end
+        salvarConfigOutfit()
+        refreshGrid()
+    end
+end
 
 function refreshGrid()
     outfitInterface.itemScrollPanel:destroyChildren()
     local ids = {}
-    if mode == "gallery" then for i = 1, maxOutfits do if not (i >= auraStart and i <= auraEnd) then table.insert(ids, i) end end
-    elseif mode == "auras" then for i = auraStart, auraEnd do table.insert(ids, i) end
-    else for _, v in ipairs(storageProfilesOutfit.favoritos) do table.insert(ids, v.id) end end
-    
+    if mode == "gallery" then
+        for i = 1, maxOutfits do if not (i >= auraStart and i <= auraEnd) then table.insert(ids, i) end end
+    elseif mode == "auras" then
+        for i = auraStart, auraEnd do table.insert(ids, i) end
+    else
+        for _, v in ipairs(storageProfilesOutfit.favoritos) do table.insert(ids, v.id) end
+    end
     for _, id in ipairs(ids) do
-        local w = UI.createWidget("TukuStudioWidget", outfitInterface.itemScrollPanel)
-        w.creature:setOutfit({type = id, addons = 3})
-        w.txtId:setText("ID: " .. id)
-        w.btnFav:setText(isFavorito(id) and "-" or "+")
-        w.select.onClick = function() 
-            if mode == "auras" then storageProfilesOutfit.auraAtiva = id else storageProfilesOutfit.atual.id = id end
-            salvarConfigOutfit()
-        end
-        w.btnFav.onClick = function() 
-            if isFavorito(id) then for i, v in ipairs(storageProfilesOutfit.favoritos) do if v.id == id then table.remove(storageProfilesOutfit.favoritos, i) break end end
-            else table.insert(storageProfilesOutfit.favoritos, {id = id}) end
-            salvarConfigOutfit() refreshGrid()
-        end
+        if filtroTexto == "" or tostring(id):find(filtroTexto) then addOutfitToGrid(id) end
     end
 end
 
-outfitIcon.onMouseRelease = function(w, mPos, mBtn)
-    if mBtn == 1 then
-        storageProfilesOutfit.ativo = not storageProfilesOutfit.ativo
-        w:setOn(storageProfilesOutfit.ativo)
-        salvarConfigOutfit()
-    elseif mBtn == 2 then
-        outfitInterface:show()
-        outfitInterface:raise()
-        refreshGrid()
-    end
-    return true
-end
-
+outfitInterface.searchInput.onTextChange = function(w, t) filtroTexto = t:trim() refreshGrid() end
 outfitInterface.tabGallery.onClick = function() mode = "gallery" refreshGrid() end
 outfitInterface.tabAuras.onClick = function() mode = "auras" refreshGrid() end
 outfitInterface.tabFavs.onClick = function() mode = "favs" refreshGrid() end
+outfitInterface.closeButton.onClick = function() outfitInterface:hide() end
+
+keyInterface.btnAtivar.onClick = function()
+    local d = keyInterface.keyInput:getText():trim()
+    if keysValidas[d] then storageProfilesOutfit.keyAtivacao = d salvarConfigOutfit() keyInterface:hide() refreshGrid()
+    else modules.game_textmessage.displayFailureMessage("[ERRO] Chave Invalida") end
+end
+
+outfitIcon:setOn(storageProfilesOutfit.ativo)
+outfitIcon.onMouseRelease = function(w, mPos, mBtn)
+    if not verificarLicenca() then keyInterface:show() return true end
+    if mBtn == 1 then storageProfilesOutfit.ativo = not storageProfilesOutfit.ativo w:setOn(storageProfilesOutfit.ativo) salvarConfigOutfit()
+    elseif mBtn == 2 then outfitInterface:show() refreshGrid() end
+    return true
+end
 
 macro(1, function()
-    if not g_game.isOnline() or not storageProfilesOutfit.ativo then return end
-    local o = player:getOutfit()
-    if o.type ~= tonumber(storageProfilesOutfit.atual.id) then 
-        o.type = tonumber(storageProfilesOutfit.atual.id) o.addons = 3 player:setOutfit(o) 
-    end
+    if not g_game.isOnline() or not verificarLicenca() or not storageProfilesOutfit.ativo then return end
+    local outfit = player:getOutfit()
+    local dId = tonumber(storageProfilesOutfit.atual.id) or 128
+    if outfit.type ~= dId then outfit.type = dId outfit.addons = 3 player:setOutfit(outfit) end
 end)
