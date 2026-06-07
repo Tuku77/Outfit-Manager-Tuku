@@ -1,0 +1,323 @@
+MAIN_DIRECTORY = "/bot/" .. modules.game_bot.contentsPanel.config:getCurrentOption().text .. "/storage/"
+local characterName = g_game.getCharacterName()
+STORAGE_DIRECTORY_OUTFIT = MAIN_DIRECTORY .. 'profile_outfit_' .. characterName .. '.json'
+
+if not g_resources.directoryExists(MAIN_DIRECTORY) then
+    g_resources.makeDir(MAIN_DIRECTORY)
+end
+
+storageProfilesOutfit = storageProfilesOutfit or {
+    favoritos = {
+        {id = 128, nome = "Citizen (Padrao)", mount = 0},
+        {id = 325, nome = "Madara", mount = 0},
+        {id = 410, nome = "Kurenai", mount = 0}
+    },
+    atual = {id = 128, mount = 0},
+    ativo = false,
+    keyAtivacao = ""
+}
+
+-- LISTA DE KEYS REMOTA: Altere aqui no GitHub e atualiza para todo mundo na hora!
+local keysValidas = {
+    ["TUKU-CHAVE-MESTRA"] = true,
+    ["TUKU-TESTE"] = true,
+    ["NOVA-KEY-CLIENTE"] = true
+}
+
+local function carregarConfigOutfit()
+    if g_resources.fileExists(STORAGE_DIRECTORY_OUTFIT) then
+        local status, result = pcall(function()
+            return json.decode(g_resources.readFileContents(STORAGE_DIRECTORY_OUTFIT))
+        end)
+        if status and type(result) == "table" then
+            storageProfilesOutfit = result
+        end
+    end
+end
+
+local function salvarConfigOutfit()
+    pcall(function()
+        local content = json.encode(storageProfilesOutfit, 2)
+        g_resources.writeFileContents(STORAGE_DIRECTORY_OUTFIT, content)
+    end)
+end
+
+carregarConfigOutfit()
+
+local function verificarLicenca()
+    return keysValidas[storageProfilesOutfit.keyAtivacao] == true
+end
+
+keyInterface = setupUI([[
+MainWindow
+  text: Ativacao do Script [By Tuku]
+  size: 280 130
+  anchors.centerIn: parent
+  visible: false
+
+  Label
+    id: infoLabel
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.top: parent.top
+    text: Insira sua Key de Ativacao:
+    text-align: center
+
+  TextEdit
+    id: keyInput
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.top: infoLabel.bottom
+    margin-top: 8
+
+  Button
+    id: btnAtivar
+    text: Verificar e Ativar
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.top: keyInput.bottom
+    margin-top: 12
+]], g_ui.getRootWidget())
+
+local corBotaoCustom = "red"
+if corText then corBotaoCustom = corText end
+
+outfitIcon = setupUI([[
+BotSwitch
+  id: outfitSwitch
+  height: 20
+  margin-top: 3
+  margin-right: 7
+  margin-left: 7
+  text-align: center
+  text: Outfits [Tuku]
+]], panel or modules.game_bot.contentsPanel)
+
+outfitInterface = setupUI([[
+MainWindow
+  text: Outfit Manager [By Tuku]
+  size: 420 300
+  anchors.centerIn: parent
+  visible: false
+
+  TextList
+    id: outfitList
+    anchors.left: parent.left
+    anchors.top: parent.top
+    padding: 1
+    size: 210 210
+    margin-bottom: 3
+    margin-left: 3
+    vertical-scrollbar: outfitScrollBar
+  
+  VerticalScrollBar
+    id: outfitScrollBar
+    anchors.top: outfitList.top
+    anchors.bottom: outfitList.bottom
+    anchors.right: outfitList.right
+    step: 14
+    pixels-scroll: true
+
+  Label
+    id: nameLabel
+    anchors.left: outfitList.right
+    anchors.top: outfitList.top
+    text: Nome do Visual:
+    margin-top: 10
+    margin-left: 15
+
+  TextEdit
+    id: outName
+    anchors.right: parent.right
+    anchors.left: outfitList.right
+    anchors.top: nameLabel.bottom
+    margin-top: 5
+    margin-left: 15
+    margin-right: 15
+    
+  Label
+    id: idLabel
+    anchors.left: outfitList.right
+    anchors.top: outName.bottom
+    text: ID da Roupa:
+    margin-top: 10
+    margin-left: 15
+
+  TextEdit
+    id: outID
+    anchors.right: parent.right
+    anchors.left: outfitList.right
+    anchors.top: idLabel.bottom
+    margin-top: 5
+    margin-left: 15
+    margin-right: 15
+
+  Button
+    id: addOutfit
+    anchors.left: outfitList.right
+    anchors.right: parent.right
+    anchors.top: outID.bottom
+    margin-top: 15
+    margin-left: 15
+    margin-right: 15
+    text: Adicionar
+
+  HorizontalSeparator
+    id: separator
+    anchors.right: parent.right
+    anchors.left: parent.left
+    anchors.bottom: closeButton.top
+    margin-bottom: 8
+
+  Label
+    id: watermark
+    text: Created by Tuku
+    font: verdana-11px-rounded
+    color: #dfdfdf88
+    anchors.left: parent.left
+    anchors.bottom: parent.bottom
+    margin-bottom: 5
+    margin-left: 5
+
+  Button
+    id: closeButton
+    text: Close
+    anchors.right: parent.right
+    anchors.bottom: parent.bottom
+    size: 45 21
+    margin-right: 5  
+]], g_ui.getRootWidget())
+
+local outfitEntryTemplate = [[
+UIWidget
+  background-color: alpha
+  text-offset: 5 0
+  focusable: true
+  height: 16
+
+  Label
+    id: textToSet
+    anchors.left: parent.left
+    anchors.verticalCenter: parent.verticalCenter
+    margin-left: 5
+
+  Button
+    id: remove
+    text: x
+    anchors.right: parent.right
+    margin-right: 5
+    width: 15
+    height: 15
+]]
+
+function refreshOutfitList()
+    if not storageProfilesOutfit.favoritos then return end
+    outfitInterface.outfitList:destroyChildren()
+
+    for index, value in ipairs(storageProfilesOutfit.favoritos) do
+        local label = setupUI(outfitEntryTemplate, outfitInterface.outfitList)
+        label.textToSet:setText(string.format("%s [%d]", value.nome, value.id))
+        label.textToSet:setFont("verdana-11px-rounded")
+        
+        label.onDoubleClick = function(widget)
+            if not verificarLicenca() then return end
+            storageProfilesOutfit.atual.id = value.id
+            storageProfilesOutfit.atual.mount = value.mount
+            salvarConfigOutfit()
+            player:setText("Visual: " .. value.nome)
+            schedule(1200, function() player:clearText() end)
+        end
+
+        label.remove.onClick = function(widget)
+            table.remove(storageProfilesOutfit.favoritos, index)
+            salvarConfigOutfit()
+            refreshOutfitList()
+        end
+    end
+end
+
+outfitInterface.addOutfit.onClick = function()
+    local name = outfitInterface.outName:getText():trim()
+    local id = tonumber(outfitInterface.outID:getText():trim())
+
+    if name == "" or not id then return end
+
+    table.insert(storageProfilesOutfit.favoritos, {id = id, nome = name, mount = 0})
+    salvarConfigOutfit()
+    refreshOutfitList()
+
+    outfitInterface.outName:setText("")
+    outfitInterface.outID:setText("")
+end
+
+outfitInterface.closeButton.onClick = function()
+    outfitInterface:hide()
+    salvarConfigOutfit()
+end
+
+keyInterface.btnAtivar.onClick = function()
+    local digitada = keyInterface.keyInput:getText():trim()
+    if keysValidas[digitada] then
+        storageProfilesOutfit.keyAtivacao = digitada
+        salvarConfigOutfit()
+        keyInterface:hide()
+        outfitInterface:show()
+        outfitInterface:raise()
+        outfitInterface:focus()
+        refreshOutfitList()
+    else
+        modules.game_textmessage.displayFailureMessage("[ERRO] Key Invalida!")
+    end
+end
+
+outfitIcon:setOn(storageProfilesOutfit.ativo)
+
+outfitIcon.onMouseRelease = function(widget, mousePos, mouseButton)
+    if mouseButton == 1 then
+        if not verificarLicenca() then
+            keyInterface:show()
+            keyInterface:raise()
+            keyInterface:focus()
+            return true
+        end
+        storageProfilesOutfit.ativo = not storageProfilesOutfit.ativo
+        widget:setOn(storageProfilesOutfit.ativo)
+        salvarConfigOutfit()
+    elseif mouseButton == 2 then
+        if not verificarLicenca() then
+            keyInterface:show()
+            keyInterface:raise()
+            keyInterface:focus()
+            return true
+        end
+        outfitInterface:show()
+        outfitInterface:raise()
+        outfitInterface:focus()
+        refreshOutfitList()
+    end
+    return true
+end
+
+macro(1, function()
+    if not storageProfilesOutfit.ativo then return end
+    if not g_game.isOnline() then return end
+    if not verificarLicenca() then 
+        storageProfilesOutfit.ativo = false
+        outfitIcon:setOn(false)
+        return 
+    end
+
+    local outfit = player:getOutfit()
+    local desejadoId = storageProfilesOutfit.atual.id
+    local desejadoMount = storageProfilesOutfit.atual.mount
+
+    if outfit.type ~= desejadoId or outfit.mount ~= desejadoMount then
+        outfit.type = desejadoId
+        outfit.mount = desejadoMount
+        player:setOutfit(outfit)
+    end
+end)
+
+if verificarLicenca() then
+    refreshOutfitList()
+end
