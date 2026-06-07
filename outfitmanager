@@ -10,8 +10,7 @@ storageProfilesOutfit = storageProfilesOutfit or {
     favoritos = {},
     atual = {id = 128},
     ativo = false,
-    keyAtivacao = "",
-    modoAleatorio = false
+    keyAtivacao = ""
 }
 
 local keysValidas = {
@@ -79,32 +78,19 @@ MainWindow
     margin-top: 12
 ]], g_ui.getRootWidget())
 
--- Icone do Painel Ajustado com BotSwitch Real para o Dado
-outfitIconPanel = setupUI([[
-Panel
+-- Botão Simples Clássico na Barra Lateral
+outfitIcon = setupUI([[
+BotSwitch
+  id: outfitSwitch
   height: 20
   margin-top: 3
   margin-right: 7
   margin-left: 7
-  layout:
-    type: horizontalBox
-
-  BotSwitch
-    id: outfitSwitch
-    text: Visuais [Tuku]
-    width: 115
-
-  BotSwitch
-    id: btnRandom
-    text: 🎲
-    width: 25
-    margin-left: 3
+  text-align: center
+  text: Visuais [Tuku]
 ]], panel or modules.game_bot.contentsPanel)
 
-outfitIcon = outfitIconPanel.outfitSwitch
-btnRandomIcon = outfitIconPanel.btnRandom
-
--- Interface Principal
+-- Interface Principal com a Barra de Busca
 outfitInterface = setupUI([[
 MainWindow
   text: OUTFIT STUDIO // TUKU
@@ -131,6 +117,7 @@ MainWindow
     width: 120
     height: 24
 
+  -- Campo de Busca Limpo
   TextEdit
     id: searchInput
     anchors.top: parent.top
@@ -268,8 +255,6 @@ local function addOutfitToGrid(id)
 
     widget.select.onClick = function()
         if not verificarLicenca() then return end
-        storageProfilesOutfit.modoAleatorio = false
-        btnRandomIcon:setOn(false)
         storageProfilesOutfit.atual.id = id
         salvarConfigOutfit()
     end
@@ -305,6 +290,7 @@ function refreshGrid()
     outfitInterface.itemScrollPanel:destroyChildren()
 
     if mode == "gallery" then
+        -- Filtro direto: se digitou algo, tenta mostrar só aquele ID
         if filtroTexto ~= "" then
             local targetId = tonumber(filtroTexto)
             if targetId and targetId >= 1 and targetId <= maxOutfits then
@@ -327,22 +313,15 @@ function refreshGrid()
         end
         carregarLote()
     elseif mode == "favs" then
-        local exibiuAlgum = false
         for _, fav in ipairs(storageProfilesOutfit.favoritos) do
             if filtroTexto == "" or tostring(fav.id):find(filtroTexto) then
                 addOutfitToGrid(fav.id)
-                exibiuAlgum = true
             end
-        end
-
-        if not exibiuAlgum then
-            local label = UI.createWidget("Label", outfitInterface.itemScrollPanel)
-            label:setText(filtroTexto == "" and "SUA COLECAO ESTA VAZIA" or "NENHUM FAVORITO ENCONTRADO")
-            label:setColor("#888888")
         end
     end
 end
 
+-- Listener do Filtro de Texto
 outfitInterface.searchInput.onTextChange = function(widget, text)
     filtroTexto = text:trim()
     refreshGrid()
@@ -378,18 +357,6 @@ keyInterface.btnAtivar.onClick = function()
 end
 
 outfitIcon:setOn(storageProfilesOutfit.ativo)
-btnRandomIcon:setOn(storageProfilesOutfit.modoAleatorio)
-
--- Comportamento corrigido do BotSwitch do dado
-btnRandomIcon.onClick = function(widget)
-    if not verificarLicenca() then
-        keyInterface:show()
-        return true
-    end
-    storageProfilesOutfit.modoAleatorio = not storageProfilesOutfit.modoAleatorio
-    widget:setOn(storageProfilesOutfit.modoAleatorio)
-    salvarConfigOutfit()
-end
 
 outfitIcon.onMouseRelease = function(widget, mousePos, mouseButton)
     if mouseButton == 1 then
@@ -418,26 +385,12 @@ outfitIcon.onMouseRelease = function(widget, mousePos, mouseButton)
 end
 
 -- ====================================================================
--- MOTOR SEGURO DE ATUALIZAÇÃO BASEADO EM CICLOS (1ms)
+-- MOTOR SEGURO DE ATUALIZAÇÃO (1ms)
 -- ====================================================================
-local ciclosContador = 0
-
 macro(1, function()
     if not g_game.isOnline() then return end
     if not verificarLicenca() then return end
 
-    -- Sistema de rotação por contagem interna de ms pura (independente de os.time)
-    if storageProfilesOutfit.ativo and storageProfilesOutfit.modoAleatorio then
-        ciclosContador = ciclosContador + 1
-        if ciclosContador >= 3000 then -- 3000 ms = 3 segundos exatos
-            storageProfilesOutfit.atual.id = math.random(1, maxOutfits)
-            ciclosContador = 0
-        end
-    else
-        ciclosContador = 0
-    end
-
-    -- Aplica o visual no player
     if storageProfilesOutfit.ativo then
         local outfit = player:getOutfit()
         local desejadoId = tonumber(storageProfilesOutfit.atual.id) or 128
