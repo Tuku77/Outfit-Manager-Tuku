@@ -50,7 +50,6 @@ local function isFavorito(id)
     return false
 end
 
--- Interface de Ativação Clean
 keyInterface = setupUI([[
 MainWindow
   text: Activation
@@ -86,11 +85,10 @@ BotSwitch
   text: Outfits [Tuku]
 ]], panel or modules.game_bot.contentsPanel)
 
--- Nova Interface Corrigida com Painel de Itens Padrão + Scrollbar Manual Separada
 outfitInterface = setupUI([[
 MainWindow
   text: OUTFIT STUDIO // TUKU
-  size: 580 500
+  size: 580 520
   anchors.centerIn: parent
   visible: false
 
@@ -126,7 +124,7 @@ MainWindow
     vertical-scrollbar: mainScrollBar
     layout:
       type: grid
-      cell-size: 80 100
+      cell-size: 80 115
       flow: true
 
   VerticalScrollBar
@@ -134,7 +132,7 @@ MainWindow
     anchors.top: itemScrollPanel.top
     anchors.bottom: itemScrollPanel.bottom
     anchors.right: parent.right
-    step: 50
+    step: 60
     pixels-scroll: true
 
   HorizontalSeparator
@@ -161,9 +159,10 @@ MainWindow
     size: 65 22
 ]], g_ui.getRootWidget())
 
+-- Template Ajustado: Altura aumentada para 115 e adicionado Label do ID abaixo do boneco
 g_ui.loadUIFromString([[
 TukuStudioWidget < UIWidget
-  size: 80 100
+  size: 80 115
   background-color: #1c1c1c
   border: 1 #282828
   margin: 2
@@ -173,7 +172,7 @@ TukuStudioWidget < UIWidget
     size: 60 60
     anchors.top: parent.top
     anchors.horizontalCenter: parent.horizontalCenter
-    margin-top: 5
+    margin-top: 3
     phantom: true    
 
   Button
@@ -185,18 +184,29 @@ TukuStudioWidget < UIWidget
     margin-top: 3
     margin-right: 3
 
+  Label
+    id: txtId
+    text: ID: 0
+    font: verdana-11px-rounded
+    color: #aaaaaa
+    text-align: center
+    anchors.top: creature.bottom
+    anchors.left: parent.left
+    anchors.right: parent.right
+    margin-top: 1
+
   Button
     id: select
     text: EQUIP
     size: 70 18
     anchors.bottom: parent.bottom
     anchors.horizontalCenter: parent.horizontalCenter
-    margin-bottom: 5
+    margin-bottom: 4
     font: verdana-11px-rounded
 ]])
 
 local mode = "gallery"
-local maxOutfits = 800 -- Reduzido para 800 (evita lag e já cobre TODAS as outfits e monstros principais da base do jogo)
+local maxOutfits = 3000 -- Expandido para 3000 para buscar TUDO da base do jogo
 
 local function addOutfitToGrid(id)
     local widget = UI.createWidget("TukuStudioWidget", outfitInterface.itemScrollPanel)
@@ -206,6 +216,9 @@ local function addOutfitToGrid(id)
     tempOutfit.type = id
     tempOutfit.addons = 3
     widget.creature:setOutfit(tempOutfit)
+    
+    -- Insere o número do ID no painel do boneco
+    widget.txtId:setText("ID: " .. id)
 
     if isFavorito(id) then
         widget.btnFav:setText("-")
@@ -252,17 +265,17 @@ function refreshGrid()
     outfitInterface.itemScrollPanel:destroyChildren()
 
     if mode == "gallery" then
-        -- Carregamento cadenciado para não congelar o bot
         local currentId = 1
         local function carregarLote()
             if mode ~= "gallery" or not outfitInterface:isVisible() then return end
-            local limite = math.min(currentId + 40, maxOutfits)
+            -- Carrega lotes um pouco maiores de cada vez (50), mantendo estável até o ID 3000
+            local limite = math.min(currentId + 50, maxOutfits)
             for i = currentId, limite do
                 addOutfitToGrid(i)
             end
             currentId = limite + 1
             if currentId <= maxOutfits then
-                schedule(20, carregarLote)
+                schedule(15, carregarLote)
             end
         end
         carregarLote()
