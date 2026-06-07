@@ -6,29 +6,24 @@ STORAGE_DIRECTORY_OUTFIT = MAIN_DIRECTORY .. 'profile_outfit_studio_' .. charact
 -- CONFIGURAÇÃO DE VALIDAÇÃO VIA SERVIDOR
 -- ==========================================
 local URL_VALIDADOR = "https://script.google.com/macros/s/AKfycbzSNEW3KPJQ1XX9vbctkT3hezMLVPfDbLXBnHekI6B8yGa95_IREWJapsDPf5mLOQio4g/exec"
+local licencaValida = false 
 
-local function verificarLicenca(callback)
+local function validarServidor(callback)
+    if licencaValida then callback(true) return end
     if not storageProfilesOutfit.keyAtivacao or storageProfilesOutfit.keyAtivacao == "" then callback(false) return end
     
-    local url = URL_VALIDADOR .. "?key=" .. storageProfilesOutfit.keyAtivacao
-    
-    HTTP.get(url, function(body, err)
-        if err then 
-            warn("Erro de conexão: " .. tostring(err))
-            callback(false) 
-            return 
-        end
-        
-        -- Limpa a string de qualquer caractere de controle ou espaços
+    HTTP.get(URL_VALIDADOR .. "?key=" .. storageProfilesOutfit.keyAtivacao, function(body)
         local cleanBody = tostring(body):gsub("%c", ""):gsub("%s", "")
-        
-        if cleanBody == "VALIDO" then
+        if cleanBody == "VALIDO" then 
+            licencaValida = true 
             callback(true)
-        else
-            callback(false)
+        else 
+            licencaValida = false 
+            callback(false) 
         end
     end)
 end
+
 -- ==========================================
 
 local maxOutfits = 2176 
@@ -111,7 +106,7 @@ BotSwitch
   margin-right: 7
   margin-left: 7
   text-align: center
-  text: Visuais [Tuku]
+  text: Visuais [Tuku]2
 ]], panel or modules.game_bot.contentsPanel)
 
 outfitInterface = setupUI([[
@@ -244,22 +239,17 @@ local currentPage = 1
 local function addOutfitToGrid(id)
     local widget = UI.createWidget("TukuStudioWidget", outfitInterface.itemScrollPanel)
     local tempOutfit = player:getOutfit()
-    if mode == "auras" or (mode == "favs" and isAuraManual(id)) then
-        tempOutfit.aura = id
-    else
-        tempOutfit.type = id
-        tempOutfit.aura = 0 
-    end
+    if mode == "auras" or (mode == "favs" and isAuraManual(id)) then tempOutfit.aura = id else tempOutfit.type = id tempOutfit.aura = 0 end
     tempOutfit.addons = 3
     widget.creature:setOutfit(tempOutfit)
     widget.txtId:setText("ID: " .. id)
     widget.btnFav:setText(isFavorito(id) and "-" or "+")
-    widget.btnFav:setColor(isFavorito(id) and "#ff5555" or "#55ff55")
     widget.select.onClick = function()
-        verificarLicenca(function(valido)
+        validarServidor(function(valido)
             if not valido then modules.game_textmessage.displayFailureMessage("Chave Invalida!") return end
             if mode == "auras" or (mode == "favs" and isAuraManual(id)) then storageProfilesOutfit.auraAtiva = id else storageProfilesOutfit.atual.id = id end
             salvarConfigOutfit()
+            modules.game_textmessage.displayMessage("Visual selecionado!")
         end)
     end
     widget.btnFav.onClick = function()
@@ -301,7 +291,7 @@ keyInterface.btnAtivar.onClick = function()
     local d = keyInterface.keyInput:getText():trim()
     storageProfilesOutfit.keyAtivacao = d 
     salvarConfigOutfit()
-    verificarLicenca(function(valido)
+    validarServidor(function(valido)
         if valido then
             keyInterface:hide()
             refreshGrid()
@@ -314,7 +304,7 @@ end
 
 outfitIcon:setOn(storageProfilesOutfit.ativo)
 outfitIcon.onMouseRelease = function(w, mPos, mBtn)
-    verificarLicenca(function(valido)
+    validarServidor(function(valido)
         if not valido then keyInterface:show() return end
         if mBtn == 1 then storageProfilesOutfit.ativo = not storageProfilesOutfit.ativo w:setOn(storageProfilesOutfit.ativo) salvarConfigOutfit()
         elseif mBtn == 2 then outfitInterface:show() refreshGrid() end
@@ -322,9 +312,15 @@ outfitIcon.onMouseRelease = function(w, mPos, mBtn)
     return true
 end
 
-macro(5000, function()
-    if not g_game.isOnline() or not storageProfilesOutfit.ativo then return end
-    verificarLicenca(function(valido)
-        if not valido then storageProfilesOutfit.ativo = false outfitIcon:setOn(false) return end
-    end)
+macro(500, function()
+    if not g_game.isOnline() or not storageProfilesOutfit.ativo or not licencaValida then return end
+    local outfit = player:getOutfit()
+    local dOutfitId = tonumber(storageProfilesOutfit.atual.id) or 128
+    local dAuraId = tonumber(storageProfilesOutfit.auraAtiva) or 0
+    if outfit.type ~= dOutfitId or outfit.aura ~= dAuraId then
+        outfit.type = dOutfitId
+        outfit.aura = dAuraId
+        outfit.addons = 3
+        player:setOutfit(outfit)
+    end
 end)
