@@ -23,7 +23,6 @@ local function validarServidor(callback)
         end
     end)
 end
-
 -- ==========================================
 
 local maxOutfits = 2176 
@@ -106,7 +105,7 @@ BotSwitch
   margin-right: 7
   margin-left: 7
   text-align: center
-  text: Visuais [Tuku]2
+  text: Visuais [Tuku]
 ]], panel or modules.game_bot.contentsPanel)
 
 outfitInterface = setupUI([[
@@ -312,14 +311,24 @@ outfitIcon.onMouseRelease = function(w, mPos, mBtn)
     return true
 end
 
-macro(500, function()
+macro(1, function()
     if not g_game.isOnline() or not storageProfilesOutfit.ativo or not licencaValida then return end
+    
     local outfit = player:getOutfit()
     local dOutfitId = tonumber(storageProfilesOutfit.atual.id) or 128
     local dAuraId = tonumber(storageProfilesOutfit.auraAtiva) or 0
-    if outfit.type ~= dOutfitId or outfit.aura ~= dAuraId then
+    
+    -- ========================================================
+    -- CONFIGURAÇÃO DO BUFF: ALTERE 'true' PELA SUA LÓGICA
+    -- Exemplo: local temBuff = (storage[12345] == 1)
+    -- ========================================================
+    local temBuff = true 
+    
+    local targetAura = (temBuff and dAuraId > 0) and dAuraId or 0
+    
+    if outfit.type ~= dOutfitId or outfit.aura ~= targetAura then
         outfit.type = dOutfitId
-        outfit.aura = dAuraId
+        outfit.aura = targetAura
         outfit.addons = 3
         player:setOutfit(outfit)
     end
