@@ -206,7 +206,7 @@ TukuStudioWidget < UIWidget
 ]])
 
 local mode = "gallery"
-local maxOutfits = 3000 -- Expandido para 3000 para buscar TUDO da base do jogo
+local maxOutfits = 2176 
 
 local function addOutfitToGrid(id)
     local widget = UI.createWidget("TukuStudioWidget", outfitInterface.itemScrollPanel)
