@@ -3,18 +3,24 @@ local characterName = g_game.getCharacterName()
 STORAGE_DIRECTORY_OUTFIT = MAIN_DIRECTORY .. 'profile_outfit_studio_' .. characterName .. '.json'
 
 -- ==========================================
--- CONFIGURAÇÃO DE VALIDAÇÃO VIA SERVIDOR
+-- CONFIGURAÇÃO DE VALIDAÇÃO COM HWID
 -- ==========================================
 local URL_VALIDADOR = "https://script.google.com/macros/s/AKfycbx_cmCasUA1bsBHSxf2eiBE3rBx7ANRoKTWhK83lsyCngWYSFb8tbby8uJ461TA0gC8Bw/exec"
 local licencaValida = false 
+
+local function getHWID()
+    return g_crypt.sha1(g_game.getCharacterName() .. "TUKU-SECRET-SALT-2026")
+end
 
 local function validarServidor(callback)
     if licencaValida then callback(true) return end
     if not storageProfilesOutfit.keyAtivacao or storageProfilesOutfit.keyAtivacao == "" then callback(false) return end
     
-    HTTP.get(URL_VALIDADOR .. "?key=" .. storageProfilesOutfit.keyAtivacao, function(body)
+    local url = URL_VALIDADOR .. "?key=" .. storageProfilesOutfit.keyAtivacao .. "&hwid=" .. getHWID()
+    
+    HTTP.get(url, function(body)
         local cleanBody = tostring(body):gsub("%c", ""):gsub("%s", "")
-        if cleanBody == "VALIDO" then 
+        if cleanBody:find("VALIDO") then 
             licencaValida = true 
             callback(true)
         else 
@@ -105,7 +111,7 @@ BotSwitch
   margin-right: 7
   margin-left: 7
   text-align: center
-  text: Visuais [Tuku]
+  text: Visuais [Tuku]2
 ]], panel or modules.game_bot.contentsPanel)
 
 outfitInterface = setupUI([[
@@ -311,9 +317,6 @@ outfitIcon.onMouseRelease = function(w, mPos, mBtn)
     return true
 end
 
--- ========================================================
--- MACRO CORRIGIDA COM AGNOSIA DE IDS E SINCRONIA REAL
--- ========================================================
 macro(1, function()
     if not g_game.isOnline() or not storageProfilesOutfit.ativo or not licencaValida then return end
     
@@ -321,13 +324,10 @@ macro(1, function()
     local dOutfitId = tonumber(storageProfilesOutfit.atual.id) or 128
     local dAuraId = tonumber(storageProfilesOutfit.auraAtiva) or 0
     
-    -- Verifica se o personagem possui ALGUMA aura ativa vinda do servidor
-    -- Se outfit.aura for maior que 0 e NÃO for a própria aura do bot, significa que há um buff ativo no jogo
     local temBuff = false
     if outfit.aura > 0 and outfit.aura ~= dAuraId then
         temBuff = true
     elseif outfit.aura == dAuraId and dAuraId > 0 then
-        -- Mantém o estado verdadeiro caso o bot já tenha injetado a aura e ela continue ativa
         temBuff = true
     end
     
