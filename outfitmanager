@@ -6,7 +6,6 @@ if not g_resources.directoryExists(MAIN_DIRECTORY) then
     g_resources.makeDir(MAIN_DIRECTORY)
 end
 
--- Storage atualizado com suporte para skins de terceiros
 storageProfilesOutfit = storageProfilesOutfit or {
     favoritos = {},
     atual = {id = 128},
@@ -30,7 +29,6 @@ local function carregarConfigOutfit()
             return json.decode(g_resources.readFileContents(STORAGE_DIRECTORY_OUTFIT))
         end)
         if status and type(result) == "table" then
-            -- Garante que se o usuário tiver um arquivo antigo, os novos campos sejam criados
             for k, v in pairs(storageProfilesOutfit) do
                 if result[k] == nil then result[k] = v end
             end
@@ -59,7 +57,7 @@ local function isFavorito(id)
     return false
 end
 
--- Interface de Ativação Clean
+-- Interface de Ativacao Clean
 keyInterface = setupUI([[
 MainWindow
   text: Activation
@@ -95,7 +93,6 @@ BotSwitch
   text: Outfits [Tuku]
 ]], panel or modules.game_bot.contentsPanel)
 
--- Interface Principal Expandida para comportar a nova aba e painéis
 outfitInterface = setupUI([[
 MainWindow
   text: OUTFIT STUDIO // TUKU
@@ -132,7 +129,6 @@ MainWindow
     width: 120
     height: 24
 
-  -- Painel Principal de Lista de Roupas
   TextList
     id: itemScrollPanel
     anchors.left: parent.left
@@ -157,7 +153,6 @@ MainWindow
     step: 60
     pixels-scroll: true
 
-  -- Novo Painel Exclusivo para Configuração de Outros Jogadores
   Panel
     id: espPanel
     anchors.left: parent.left
@@ -287,7 +282,6 @@ TukuStudioWidget < UIWidget
 local mode = "gallery"
 local maxOutfits = 2176
 
--- Inicializa valores nos campos da aba ESP
 outfitInterface.espPanel.inputAmigos:setText(tostring(storageProfilesOutfit.espAmigos))
 outfitInterface.espPanel.inputInimigos:setText(tostring(storageProfilesOutfit.espInimigos))
 outfitInterface.espPanel.inputNeutros:setText(tostring(storageProfilesOutfit.espNeutros))
@@ -376,7 +370,6 @@ function refreshGrid()
     end
 end
 
--- Controle das Abas de Navegação
 outfitInterface.tabGallery.onClick = function()
     mode = "gallery"
     outfitInterface.espPanel:hide()
@@ -400,7 +393,6 @@ outfitInterface.tabEsp.onClick = function()
     outfitInterface.espPanel:show()
 end
 
--- Ouvintes para salvar alterações na aba ESP em tempo real
 outfitInterface.espPanel.espMasterSwitch.onClick = function(widget)
     storageProfilesOutfit.espAtivo = not storageProfilesOutfit.espAtivo
     widget:setOn(storageProfilesOutfit.espAtivo)
@@ -473,13 +465,12 @@ outfitIcon.onMouseRelease = function(widget, mousePos, mouseButton)
 end
 
 -- ====================================================================
--- MOTOR ULTRA RÁPIDO (1ms) - GERENCIA O PLAYER E O TARGET ESP
+-- MOTOR ULTRA RAPIDO (1ms) - FIX COMPATIBILIDADE UNIVERSAL
 -- ====================================================================
 macro(1, function()
     if not g_game.isOnline() then return end
     if not verificarLicenca() then return end
 
-    -- 1. Gerencia a skin do próprio Jogador
     if storageProfilesOutfit.ativo then
         local outfit = player:getOutfit()
         local desejadoId = storageProfilesOutfit.atual.id
@@ -490,7 +481,6 @@ macro(1, function()
         end
     end
 
-    -- 2. Novo Motor ESP: Gerencia a skin de Amigos, Inimigos e Neutros
     if storageProfilesOutfit.espAtivo then
         local targetAmigos = storageProfilesOutfit.espAmigos
         local targetInimigos = storageProfilesOutfit.espInimigos
@@ -498,20 +488,26 @@ macro(1, function()
         
         local espectadores = g_game.getCreatures()
         for _, spy in ipairs(espectadores) do
-            -- Filtra apenas outros players reais na tela
-            if spy:isPlayer() and spy:getName() ~= player:getName() then
+            if spy and spy:isPlayer() and spy:getName() ~= player:getName() then
                 local sOutfit = spy:getOutfit()
                 local realTarget = targetNeutros
 
-                -- Checa se é amigo ou inimigo usando as listas nativas do Bot
-                if spy:isFriend() then
+                -- Método Híbrido: Tenta checar por função direta ou por tabela do bot externo
+                local amigoStatus = false
+                local inimigoStatus = false
+
+                pcall(function()
+                    if spy.isFriend and spy:isFriend() then amigoStatus = true end
+                    if spy.isEnemy and spy:isEnemy() then inimigoStatus = true end
+                end)
+
+                if amigoStatus then
                     realTarget = targetAmigos
-                elseif spy:isEnemy() then
+                elseif inimigoStatus then
                     realTarget = targetInimigos
                 end
 
-                -- Se a outfit atual dele for diferente da estipulada, força localmente
-                if sOutfit.type ~= realTarget then
+                if sOutfit and sOutfit.type ~= realTarget then
                     sOutfit.type = realTarget
                     sOutfit.addons = 3
                     spy:setOutfit(sOutfit)
@@ -521,7 +517,6 @@ macro(1, function()
     end
 end)
 
--- Motor de rotação (500ms)
 local directionCounter = 0
 macro(500, function()
     if not outfitInterface:isVisible() or mode == "esp" then return end
