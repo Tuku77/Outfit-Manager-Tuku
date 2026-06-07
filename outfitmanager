@@ -12,20 +12,6 @@ local function getHWID()
     return g_crypt.sha1(g_game.getCharacterName() .. "TUKU-SECRET-SALT-2026")
 end
 
-local function validarLicenca(callback)
-    if licencaVerificada then callback(true) return end
-    if not storageProfilesOutfit.keyAtivacao or storageProfilesOutfit.keyAtivacao == "" then callback(false) return end
-    
-    HTTP.get(URL_VALIDADOR .. "?key=" .. storageProfilesOutfit.keyAtivacao .. "&hwid=" .. getHWID(), function(body)
-        if body:find("VALIDO") then 
-            licencaVerificada = true 
-            callback(true) 
-        else 
-            callback(false) 
-        end
-    end)
-end
-
 -- ==========================================
 -- CONFIGURAÇÃO E UI
 -- ==========================================
@@ -100,7 +86,7 @@ BotSwitch
   margin-right: 7
   margin-left: 7
   text-align: center
-  text: Visuais [Tuku]2
+  text: Visuais [Tuku]
 ]], panel or modules.game_bot.contentsPanel)
 
 outfitInterface = setupUI([[
@@ -132,12 +118,16 @@ TukuStudioWidget < UIWidget
   Button { id: select; text: USAR; size: 72 18; anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter; margin-bottom: 4 }
 ]])
 
--- Lógica (Mantida do seu original)
-local mode = "gallery"
-local filtroTexto = ""
-local currentPage = 1
-
+-- Funções Auxiliares
 local function isFavorito(id) for _, v in ipairs(storageProfilesOutfit.favoritos) do if v.id == id then return true end end return false end
+local function validarLicenca(callback)
+    if licencaVerificada then callback(true) return end
+    if not storageProfilesOutfit.keyAtivacao or storageProfilesOutfit.keyAtivacao == "" then callback(false) return end
+    HTTP.get(URL_VALIDADOR .. "?key=" .. storageProfilesOutfit.keyAtivacao .. "&hwid=" .. getHWID(), function(body)
+        if body:find("VALIDO") then licencaVerificada = true callback(true) else callback(false) end
+    end)
+end
+
 local function addOutfitToGrid(id)
     local widget = UI.createWidget("TukuStudioWidget", outfitInterface.itemScrollPanel)
     local tempOutfit = player:getOutfit()
@@ -169,7 +159,6 @@ function refreshGrid()
     if mode == "gallery" then for i = 1, maxOutfits do if not isAuraManual(i) then table.insert(idsValidos, i) end end
     elseif mode == "auras" then for _, idAura in ipairs(listaAurasOrdenada) do table.insert(idsValidos, idAura) end
     else for _, v in ipairs(storageProfilesOutfit.favoritos) do table.insert(idsValidos, v.id) end end
-    -- Paginação (Simplificada para manter a integridade)
     local startIndex = ((currentPage - 1) * ITEMS_PER_PAGE) + 1
     for i = startIndex, startIndex + ITEMS_PER_PAGE - 1 do if idsValidos[i] then addOutfitToGrid(idsValidos[i]) end end
 end
@@ -181,19 +170,23 @@ outfitInterface.tabFavs.onClick = function() mode = "favs" refreshGrid() end
 outfitInterface.closeButton.onClick = function() outfitInterface:hide() end
 keyInterface.btnAtivar.onClick = function()
     storageProfilesOutfit.keyAtivacao = keyInterface.keyInput:getText():trim()
-    validarLicenca(function(ok) if ok then keyInterface:hide() else modules.game_textmessage.displayFailureMessage("Chave Invalida!") end end)
+    validarLicenca(function(ok) if ok then keyInterface:hide() salvarConfigOutfit() modules.game_textmessage.displayMessage("Ativado!") else modules.game_textmessage.displayFailureMessage("Chave Invalida!") end end)
 end
 
+outfitIcon:setOn(storageProfilesOutfit.ativo)
 outfitIcon.onMouseRelease = function(w, mPos, mBtn)
+    -- Botão direito abre o painel mesmo sem licença, mas bloqueia o uso
+    if mBtn == 2 then outfitInterface:show() refreshGrid() return true end
+    -- Botão esquerdo valida
     validarLicenca(function(ok)
         if not ok then keyInterface:show() return end
-        if mBtn == 1 then storageProfilesOutfit.ativo = not storageProfilesOutfit.ativo w:setOn(storageProfilesOutfit.ativo) salvarConfigOutfit()
-        elseif mBtn == 2 then outfitInterface:show() refreshGrid() end
+        storageProfilesOutfit.ativo = not storageProfilesOutfit.ativo
+        w:setOn(storageProfilesOutfit.ativo)
+        salvarConfigOutfit()
     end)
     return true
 end
 
--- MACRO
 macro(1, function()
     if not g_game.isOnline() or not licencaVerificada or not storageProfilesOutfit.ativo then return end
     local outfit = player:getOutfit()
