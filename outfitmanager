@@ -1,14 +1,14 @@
 MAIN_DIRECTORY = "/bot/" .. modules.game_bot.contentsPanel.config:getCurrentOption().text .. "/storage/"
 local characterName = g_game.getCharacterName()
-STORAGE_DIRECTORY_OUTFIT = MAIN_DIRECTORY .. 'profile_outfit_' .. characterName .. '.json'
+STORAGE_DIRECTORY_OUTFIT = MAIN_DIRECTORY .. 'profile_outfit_gallery_' .. characterName .. '.json'
 
 if not g_resources.directoryExists(MAIN_DIRECTORY) then
     g_resources.makeDir(MAIN_DIRECTORY)
 end
 
 storageProfilesOutfit = storageProfilesOutfit or {
-    favoritos = {},
-    atual = {id = 128, mount = 0},
+    favoritos = {}, -- Guarda {id = X, nome = Y}
+    atual = {id = 128},
     ativo = false,
     keyAtivacao = ""
 }
@@ -41,6 +41,13 @@ carregarConfigOutfit()
 
 local function verificarLicenca()
     return keysValidas[storageProfilesOutfit.keyAtivacao] == true
+end
+
+local function isFavorito(id)
+    for _, v in ipairs(storageProfilesOutfit.favoritos) do
+        if v.id == id then return true end
+    end
+    return false
 end
 
 keyInterface = setupUI([[
@@ -87,163 +94,141 @@ BotSwitch
 
 outfitInterface = setupUI([[
 MainWindow
-  text: Outfit Gallery [By Tuku]
-  size: 300 400
+  text: Outfit Studio [By Tuku]
+  size: 660 560
   anchors.centerIn: parent
   visible: false
 
-  TextList
-    id: outfitList
+  Button
+    id: tabGallery
+    text: Galeria Geral
+    anchors.top: parent.top
+    anchors.left: parent.left
+    width: 120
+    height: 22
+
+  Button
+    id: tabFavs
+    text: Meus Favoritos (*)
+    anchors.top: parent.top
+    anchors.left: tabGallery.right
+    margin-left: 5
+    width: 120
+    height: 22
+
+  Panel
+    id: itemList
     anchors.left: parent.left
     anchors.right: parent.right
-    anchors.top: parent.top
+    anchors.top: tabGallery.bottom
     anchors.bottom: separator.top
+    margin-top: 10
     margin-bottom: 8
-    padding: 1
-    vertical-scrollbar: outfitScrollBar
-  
-  VerticalScrollBar
-    id: outfitScrollBar
-    anchors.top: outfitList.top
-    anchors.bottom: outfitList.bottom
-    anchors.right: outfitList.right
-    step: 14
-    pixels-scroll: true
+    layout:
+      type: grid
+      cell-size: 85 105
+      flow: true
 
   HorizontalSeparator
     id: separator
     anchors.right: parent.right
     anchors.left: parent.left
     anchors.bottom: closeButton.top
-    margin-bottom: 8
+    margin-bottom: 8    
 
-  Label
-    id: watermark
-    text: Created by Tuku
-    font: verdana-11px-rounded
-    color: #dfdfdf88
+  Button
+    id: backButton
+    text: < Anterior
     anchors.left: parent.left
     anchors.bottom: parent.bottom
-    margin-bottom: 5
+    width: 90
+
+  Button
+    id: nextButton
+    text: Proximo >
+    anchors.left: backButton.right
     margin-left: 5
+    anchors.bottom: parent.bottom
+    width: 90
+
+  Label
+    id: pageLabel
+    text: 0/2000
+    text-align: center
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.bottom: parent.bottom
+    width: 100
+    margin-bottom: 3
 
   Button
     id: closeButton
     text: Close
     anchors.right: parent.right
     anchors.bottom: parent.bottom
-    size: 45 21
-    margin-right: 5  
+    size: 55 21
 ]], g_ui.getRootWidget())
 
-local outfitEntryTemplate = [[
-UIWidget
-  background-color: alpha
-  text-offset: 5 0
-  focusable: true
-  height: 18
+g_ui.loadUIFromString([[
+TukuOutfitWidget < UIWidget
+  size: 85 105
+  background-color: #22222244
+  border: 1 #444444
+  margin: 2
 
-  Label
-    id: textToSet
-    anchors.left: parent.left
-    anchors.verticalCenter: parent.verticalCenter
-    margin-left: 5
-]]
+  UICreature
+    id: creature
+    size: 65 65
+    anchors.top: parent.top
+    anchors.horizontalCenter: parent.horizontalCenter
+    phantom: true    
 
-function refreshOutfitList()
-    outfitInterface.outfitList:destroyChildren()
+  Button
+    id: btnFav
+    text: *
+    size: 16 16
+    anchors.top: parent.top
+    anchors.right: parent.right
+    margin-top: 2
+    margin-right: 2
+
+  Button
+    id: select
+    text: Usar
+    size: 75 20
+    anchors.bottom: parent.bottom
+    anchors.horizontalCenter: parent.horizontalCenter
+    margin-bottom: 4
+]])
+
+local mode = "gallery" -- "gallery" ou "favs"
+local firstId = 0
+local lastId = 3000 -- Varre até o ID 3000 da base do jogo
+local pageSize = 34 -- Quantidade de bonecos por página
+local currentOffset = firstId
+
+local function addOutfitToGrid(id)
+    local widget = UI.createWidget("TukuOutfitWidget", outfitInterface.itemList)
     
-    local gameOutfits = g_game.getOutfits()
-    if not gameOutfits or #gameOutfits == 0 then
-        local label = setupUI(outfitEntryTemplate, outfitInterface.outfitList)
-        label.textToSet:setText("Nenhum visual encontrado")
-        return
-    end
+    local tempOutfit = player:getOutfit()  
+    tempOutfit.type = id
+    tempOutfit.addons = 3
+    widget.creature:setOutfit(tempOutfit)
 
-    for _, outfitData in ipairs(gameOutfits) do
-        local id = outfitData[1]
-        local nome = outfitData[2] or ("Outfit " .. id)
-        
-        local label = setupUI(outfitEntryTemplate, outfitInterface.outfitList)
-        label.textToSet:setText(string.format("%s [%d]", nome, id))
-        label.textToSet:setFont("verdana-11px-rounded")
-        
-        label.onDoubleClick = function(widget)
-            if not verificarLicenca() then return end
-            storageProfilesOutfit.atual.id = id
-            salvarConfigOutfit()
-            player:setText("Visual: " .. nome)
-            schedule(1200, function() player:clearText() end)
-        end
-    end
-end
-
-outfitInterface.closeButton.onClick = function()
-    outfitInterface:hide()
-    salvarConfigOutfit()
-end
-
-keyInterface.btnAtivar.onClick = function()
-    local digitada = keyInterface.keyInput:getText():trim()
-    if keysValidas[digitada] then
-        storageProfilesOutfit.keyAtivacao = digitada
-        salvarConfigOutfit()
-        keyInterface:hide()
-        outfitInterface:show()
-        outfitInterface:raise()
-        outfitInterface:focus()
-        refreshOutfitList()
+    if isFavorito(id) then
+        widget.btnFav:setText("★")
+        widget.btnFav:setColor("yellow")
     else
-        modules.game_textmessage.displayFailureMessage("[ERRO] Key Invalida!")
+        widget.btnFav:setText("☆")
+        widget.btnFav:setColor("white")
     end
-end
 
-outfitIcon:setOn(storageProfilesOutfit.ativo)
-
-outfitIcon.onMouseRelease = function(widget, mousePos, mouseButton)
-    if mouseButton == 1 then
-        if not verificarLicenca() then
-            keyInterface:show()
-            keyInterface:raise()
-            keyInterface:focus()
-            return true
-        end
-        storageProfilesOutfit.ativo = not storageProfilesOutfit.ativo
-        widget:setOn(storageProfilesOutfit.ativo)
+    widget.select.onClick = function()
+        if not verificarLicenca() then return end
+        storageProfilesOutfit.atual.id = id
         salvarConfigOutfit()
-    elseif mouseButton == 2 then
-        if not verificarLicenca() then
-            keyInterface:show()
-            keyInterface:raise()
-            keyInterface:focus()
-            return true
-        end
-        outfitInterface:show()
-        outfitInterface:raise()
-        outfitInterface:focus()
-        refreshOutfitList()
-    end
-    return true
-end
-
-macro(1, function()
-    if not storageProfilesOutfit.ativo then return end
-    if not g_game.isOnline() then return end
-    if not verificarLicenca() then 
-        storageProfilesOutfit.ativo = false
-        outfitIcon:setOn(false)
-        return 
     end
 
-    local outfit = player:getOutfit()
-    local desejadoId = storageProfilesOutfit.atual.id
-
-    if outfit.type ~= desejadoId then
-        outfit.type = desejadoId
-        player:setOutfit(outfit)
-    end
-end)
-
-if verificarLicenca() then
-    refreshOutfitList()
-end
+    widget.btnFav.onClick = function()
+        if isFavorito(id) then
+            for i, v in ipairs(storageProfilesOutfit.favoritos) do
+                if v.id == id then
