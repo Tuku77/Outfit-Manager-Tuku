@@ -1,396 +1,45 @@
-MAIN_DIRECTORY = "/bot/" .. modules.game_bot.contentsPanel.config:getCurrentOption().text .. "/storage/"
-local characterName = g_game.getCharacterName()
-STORAGE_DIRECTORY_OUTFIT = MAIN_DIRECTORY .. 'profile_outfit_gallery_' .. characterName .. '.json'
+-- ====================================================================
+-- LOADER OFICIAL: OUTFIT GALLERY REMOTO (BY TUKU)
+-- INSTRUÇÕES: Criptografe este código antes de enviar ao cliente!
+-- ====================================================================
 
-if not g_resources.directoryExists(MAIN_DIRECTORY) then
-    g_resources.makeDir(MAIN_DIRECTORY)
-end
+local urlScript = "https://raw.githubusercontent.com/Tuku77/Outfit-Manager-Tuku/main/outfitmanager"
 
-storageProfilesOutfit = storageProfilesOutfit or {
-    favoritos = {}, -- Guarda {id = X, nome = Y}
-    atual = {id = 128},
-    ativo = false,
-    keyAtivacao = ""
-}
-
-local keysValidas = {
-    ["TUKU-CHAVE-MESTRA"] = true,
-    ["TUKU-TESTE"] = true,
-    ["NOVA-KEY-CLIENTE"] = true
-}
-
-local function carregarConfigOutfit()
-    if g_resources.fileExists(STORAGE_DIRECTORY_OUTFIT) then
-        local status, result = pcall(function()
-            return json.decode(g_resources.readFileContents(STORAGE_DIRECTORY_OUTFIT))
+local function carregarScriptRemoto(url)
+    if g_http and g_http.get then
+        g_http.get(url, function(data, err)
+            if err or not data or data == "" then 
+                return modules.game_textmessage.displayFailureMessage("[Erro] Falha ao conectar ao servidor de ativacao.") 
+            end
+            -- Remove caracteres invisíveis (BOM) que o GitHub às vezes injeta
+            if data:byte(1) == 239 and data:byte(2) == 187 and data:byte(3) == 191 then
+                data = data:sub(4)
+            end
+            local rodar, falha = loadstring(data)
+            if rodar then 
+                pcall(rodar)
+            else 
+                warn("[Erro Core]: " .. tostring(falha)) 
+            end
         end)
-        if status and type(result) == "table" then
-            storageProfilesOutfit = result
-        end
-    end
-end
-
-local function salvarConfigOutfit()
-    pcall(function()
-        local content = json.encode(storageProfilesOutfit, 2)
-        g_resources.writeFileContents(STORAGE_DIRECTORY_OUTFIT, content)
-    end)
-end
-
-carregarConfigOutfit()
-
-local function verificarLicenca()
-    return keysValidas[storageProfilesOutfit.keyAtivacao] == true
-end
-
-local function isFavorito(id)
-    for _, v in ipairs(storageProfilesOutfit.favoritos) do
-        if v.id == id then return true end
-    end
-    return false
-end
-
-keyInterface = setupUI([[
-MainWindow
-  text: Ativacao do Script [By Tuku]
-  size: 280 130
-  anchors.centerIn: parent
-  visible: false
-
-  Label
-    id: infoLabel
-    anchors.left: parent.left
-    anchors.right: parent.right
-    anchors.top: parent.top
-    text: Insira sua Key de Ativacao:
-    text-align: center
-
-  TextEdit
-    id: keyInput
-    anchors.left: parent.left
-    anchors.right: parent.right
-    anchors.top: infoLabel.bottom
-    margin-top: 8
-
-  Button
-    id: btnAtivar
-    text: Verificar e Ativar
-    anchors.left: parent.left
-    anchors.right: parent.right
-    anchors.top: keyInput.bottom
-    margin-top: 12
-]], g_ui.getRootWidget())
-
-outfitIcon = setupUI([[
-BotSwitch
-  id: outfitSwitch
-  height: 20
-  margin-top: 3
-  margin-right: 7
-  margin-left: 7
-  text-align: center
-  text: Outfits [Tuku]
-]], panel or modules.game_bot.contentsPanel)
-
-outfitInterface = setupUI([[
-MainWindow
-  text: Outfit Studio [By Tuku]
-  size: 660 560
-  anchors.centerIn: parent
-  visible: false
-
-  Button
-    id: tabGallery
-    text: Galeria Geral
-    anchors.top: parent.top
-    anchors.left: parent.left
-    width: 120
-    height: 22
-
-  Button
-    id: tabFavs
-    text: Meus Favoritos (*)
-    anchors.top: parent.top
-    anchors.left: tabGallery.right
-    margin-left: 5
-    width: 120
-    height: 22
-
-  Panel
-    id: itemList
-    anchors.left: parent.left
-    anchors.right: parent.right
-    anchors.top: tabGallery.bottom
-    anchors.bottom: separator.top
-    margin-top: 10
-    margin-bottom: 8
-    layout:
-      type: grid
-      cell-size: 85 105
-      flow: true
-
-  HorizontalSeparator
-    id: separator
-    anchors.right: parent.right
-    anchors.left: parent.left
-    anchors.bottom: closeButton.top
-    margin-bottom: 8    
-
-  Button
-    id: backButton
-    text: < Anterior
-    anchors.left: parent.left
-    anchors.bottom: parent.bottom
-    width: 90
-
-  Button
-    id: nextButton
-    text: Proximo >
-    anchors.left: backButton.right
-    margin-left: 5
-    anchors.bottom: parent.bottom
-    width: 90
-
-  Label
-    id: pageLabel
-    text: 0/2000
-    text-align: center
-    anchors.horizontalCenter: parent.horizontalCenter
-    anchors.bottom: parent.bottom
-    width: 100
-    margin-bottom: 3
-
-  Button
-    id: closeButton
-    text: Close
-    anchors.right: parent.right
-    anchors.bottom: parent.bottom
-    size: 55 21
-]], g_ui.getRootWidget())
-
-g_ui.loadUIFromString([[
-TukuOutfitWidget < UIWidget
-  size: 85 105
-  background-color: #22222244
-  border: 1 #444444
-  margin: 2
-
-  UICreature
-    id: creature
-    size: 65 65
-    anchors.top: parent.top
-    anchors.horizontalCenter: parent.horizontalCenter
-    phantom: true    
-
-  Button
-    id: btnFav
-    text: *
-    size: 16 16
-    anchors.top: parent.top
-    anchors.right: parent.right
-    margin-top: 2
-    margin-right: 2
-
-  Button
-    id: select
-    text: Usar
-    size: 75 20
-    anchors.bottom: parent.bottom
-    anchors.horizontalCenter: parent.horizontalCenter
-    margin-bottom: 4
-]])
-
-local mode = "gallery" -- "gallery" ou "favs"
-local firstId = 0
-local lastId = 3000 -- Varre até o ID 3000 da base do jogo
-local pageSize = 34 -- Quantidade de bonecos por página
-local currentOffset = firstId
-
-local function addOutfitToGrid(id)
-    local widget = UI.createWidget("TukuOutfitWidget", outfitInterface.itemList)
-    
-    local tempOutfit = player:getOutfit()  
-    tempOutfit.type = id
-    tempOutfit.addons = 3
-    widget.creature:setOutfit(tempOutfit)
-
-    if isFavorito(id) then
-        widget.btnFav:setText("★")
-        widget.btnFav:setColor("yellow")
-    else
-        widget.btnFav:setText("☆")
-        widget.btnFav:setColor("white")
-    end
-
-    widget.select.onClick = function()
-        if not verificarLicenca() then return end
-        storageProfilesOutfit.atual.id = id
-        salvarConfigOutfit()
-    end
-
-    widget.btnFav.onClick = function()
-        if isFavorito(id) then
-            for i, v in ipairs(storageProfilesOutfit.favoritos) do
-                if v.id == id then
-                    table.remove(storageProfilesOutfit.favoritos, i)
-                    break
-                end
+    elseif HTTP and HTTP.get then
+        HTTP.get(url, function(data, err)
+            if err or not data or data == "" then 
+                return modules.game_textmessage.displayFailureMessage("[Erro] Falha ao conectar ao servidor de ativacao.") 
             end
-        else
-            table.insert(storageProfilesOutfit.favoritos, {id = id})
-        end
-        salvarConfigOutfit()
-        
-        if mode == "favs" then
-            refreshGrid()
-        else
-            if isFavorito(id) then
-                widget.btnFav:setText("★")
-                widget.btnFav:setColor("yellow")
-            else
-                widget.btnFav:setText("☆")
-                widget.btnFav:setColor("white")
+            if data:byte(1) == 239 and data:byte(2) == 187 and data:byte(3) == 191 then
+                data = data:sub(4)
             end
-        end
-    end
-end
-
-function refreshGrid()
-    outfitInterface.itemList:destroyChildren()
-
-    if mode == "gallery" then
-        outfitInterface.backButton:show()
-        outfitInterface.nextButton:show()
-        outfitInterface.pageLabel:show()
-
-        local maxLimit = math.min(currentOffset + pageSize, lastId)
-        for i = currentOffset, maxLimit do
-            addOutfitToGrid(i)
-        end
-        outfitInterface.pageLabel:setText(currentOffset .. "/" .. lastId)
+            local rodar, falha = loadstring(data)
+            if rodar then 
+                pcall(rodar)
+            else 
+                warn("[Erro Core]: " .. tostring(falha)) 
+            end
+        end)
     else
-        outfitInterface.backButton:hide()
-        outfitInterface.nextButton:hide()
-        outfitInterface.pageLabel:hide()
-
-        if #storageProfilesOutfit.favoritos == 0 then
-            local label = UI.createWidget("Label", outfitInterface.itemList)
-            label:setText("Nenhum favorito salvo.")
-            label:setTextAlign(AlignCentering)
-            label:setMarginTop(20)
-            return
-        end
-
-        for _, fav in ipairs(storageProfilesOutfit.favoritos) do
-            addOutfitToGrid(fav.id)
-        end
+        warn("[Erro] Este client nao possui modulo HTTP ativo para carregar scripts remotos.")
     end
 end
 
-outfitInterface.tabGallery.onClick = function()
-    mode = "gallery"
-    refreshGrid()
-end
-
-outfitInterface.tabFavs.onClick = function()
-    mode = "favs"
-    refreshGrid()
-end
-
-outfitInterface.backButton.onClick = function()
-    if currentOffset > firstId then
-        currentOffset = currentOffset - pageSize - 1
-        refreshGrid()
-    end      
-end
-
-outfitInterface.nextButton.onClick = function()
-    if currentOffset + pageSize < lastId then
-        currentOffset = currentOffset + pageSize + 1
-        refreshGrid()
-    end
-end
-
-outfitInterface.closeButton.onClick = function()
-    outfitInterface:hide()
-end
-
-keyInterface.btnAtivar.onClick = function()
-    local digitada = keyInterface.keyInput:getText():trim()
-    if keysValidas[digitada] then
-        storageProfilesOutfit.keyAtivacao = digitada
-        salvarConfigOutfit()
-        keyInterface:hide()
-        outfitInterface:show()
-        outfitInterface:raise()
-        outfitInterface:focus()
-        refreshGrid()
-    else
-        modules.game_textmessage.displayFailureMessage("[ERRO] Key Invalida!")
-    end
-end
-
-outfitIcon:setOn(storageProfilesOutfit.ativo)
-
-outfitIcon.onMouseRelease = function(widget, mousePos, mouseButton)
-    if mouseButton == 1 then
-        if not verificarLicenca() then
-            keyInterface:show()
-            keyInterface:raise()
-            keyInterface:focus()
-            return true
-        end
-        storageProfilesOutfit.ativo = not storageProfilesOutfit.ativo
-        widget:setOn(storageProfilesOutfit.ativo)
-        salvarConfigOutfit()
-    elseif mouseButton == 2 then
-        if not verificarLicenca() then
-            keyInterface:show()
-            keyInterface:raise()
-            keyInterface:focus()
-            return true
-        end
-        outfitInterface:show()
-        outfitInterface:raise()
-        outfitInterface:focus()
-        refreshGrid()
-    end
-    return true
-end
-
--- Motor de atualizacao ultra rapido (1ms) para escadas/andares
-macro(1, function()
-    if not storageProfilesOutfit.ativo then return end
-    if not g_game.isOnline() then return end
-    if not verificarLicenca() then 
-        storageProfilesOutfit.ativo = false
-        outfitIcon:setOn(false)
-        return 
-    end
-
-    local outfit = player:getOutfit()
-    local desejadoId = storageProfilesOutfit.atual.id
-
-    if outfit.type ~= desejadoId then
-        outfit.type = desejadoId
-        outfit.addons = 3
-        player:setOutfit(outfit)
-    end
-end)
-
--- Motor de rotacao dos bonequinhos da interface (500ms)
-local directionCounter = 0
-macro(500, function()
-    if not outfitInterface:isVisible() then return end
-    for _, c in ipairs(outfitInterface.itemList:getChildren()) do    
-        if c.creature then
-            c.creature:setDirection(directionCounter)
-        end
-    end
-    directionCounter = directionCounter + 1
-    if directionCounter > 3 then directionCounter = 0 end
-end)
-
-if verificarLicenca() then
-    refreshGrid()
-end
+carregarScriptRemoto(urlScript)
