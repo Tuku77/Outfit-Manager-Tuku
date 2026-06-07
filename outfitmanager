@@ -5,22 +5,18 @@ STORAGE_DIRECTORY_OUTFIT = MAIN_DIRECTORY .. 'profile_outfit_studio_' .. charact
 -- ==========================================
 -- CONFIGURAÇÃO DE VALIDAÇÃO VIA SERVIDOR
 -- ==========================================
--- COLOQUE AQUI A URL DO SEU GOOGLE APP SCRIPT
 local URL_VALIDADOR = "https://script.google.com/macros/s/AKfycbzSNEW3KPJQ1XX9vbctkT3hezMLVPfDbLXBnHekI6B8yGa95_IREWJapsDPf5mLOQio4g/exec"
-local licencaValida = false
 
-local function verificarLicenca()
-    if licencaValida then return true end
-    if storageProfilesOutfit.keyAtivacao == "" then return false end
+local function verificarLicenca(callback)
+    if storageProfilesOutfit.keyAtivacao == "" then callback(false) return end
     
     HTTP.get(URL_VALIDADOR .. "?key=" .. storageProfilesOutfit.keyAtivacao, function(code, body)
         if body == "VALIDO" then
-            licencaValida = true
+            callback(true)
         else
-            licencaValida = false
+            callback(false)
         end
     end)
-    return licencaValida
 end
 -- ==========================================
 
@@ -51,13 +47,7 @@ local function isAuraManual(id) return aurasManuais[id] == true end
 
 if not g_resources.directoryExists(MAIN_DIRECTORY) then g_resources.makeDir(MAIN_DIRECTORY) end
 
-storageProfilesOutfit = storageProfilesOutfit or {
-    favoritos = {},
-    atual = {id = 128},
-    auraAtiva = 0, 
-    ativo = false,
-    keyAtivacao = ""
-}
+storageProfilesOutfit = storageProfilesOutfit or {favoritos={}, atual={id=128}, auraAtiva=0, ativo=false, keyAtivacao=""}
 
 local function carregarConfigOutfit()
     if g_resources.fileExists(STORAGE_DIRECTORY_OUTFIT) then
@@ -110,7 +100,7 @@ BotSwitch
   margin-right: 7
   margin-left: 7
   text-align: center
-  text: Visuais [Tuku]2
+  text: Visuais [Tuku]
 ]], panel or modules.game_bot.contentsPanel)
 
 outfitInterface = setupUI([[
@@ -255,17 +245,14 @@ local function addOutfitToGrid(id)
     widget.btnFav:setText(isFavorito(id) and "-" or "+")
     widget.btnFav:setColor(isFavorito(id) and "#ff5555" or "#55ff55")
     widget.select.onClick = function()
-        if not verificarLicenca() then return end
-        if mode == "auras" or (mode == "favs" and isAuraManual(id)) then 
-            storageProfilesOutfit.auraAtiva = id 
-        else 
-            storageProfilesOutfit.atual.id = id 
-        end
-        salvarConfigOutfit()
+        verificarLicenca(function(valido)
+            if not valido then modules.game_textmessage.displayFailureMessage("Chave Invalida!") return end
+            if mode == "auras" or (mode == "favs" and isAuraManual(id)) then storageProfilesOutfit.auraAtiva = id else storageProfilesOutfit.atual.id = id end
+            salvarConfigOutfit()
+        end)
     end
     widget.btnFav.onClick = function()
-        if isFavorito(id) then
-            for i, v in ipairs(storageProfilesOutfit.favoritos) do if v.id == id then table.remove(storageProfilesOutfit.favoritos, i) break end end
+        if isFavorito(id) then for i, v in ipairs(storageProfilesOutfit.favoritos) do if v.id == id then table.remove(storageProfilesOutfit.favoritos, i) break end end
         else table.insert(storageProfilesOutfit.favoritos, {id = id}) end
         salvarConfigOutfit()
         refreshGrid()
@@ -276,13 +263,9 @@ function refreshGrid()
     if not outfitInterface or not outfitInterface.itemScrollPanel then return end
     outfitInterface.itemScrollPanel:destroyChildren()
     local idsValidos = {}
-    if mode == "gallery" then
-        for i = 1, maxOutfits do if not isAuraManual(i) then table.insert(idsValidos, i) end end
-    elseif mode == "auras" then
-        for _, idAura in ipairs(listaAurasOrdenada) do table.insert(idsValidos, idAura) end
-    else
-        for _, v in ipairs(storageProfilesOutfit.favoritos) do table.insert(idsValidos, v.id) end
-    end
+    if mode == "gallery" then for i = 1, maxOutfits do if not isAuraManual(i) then table.insert(idsValidos, i) end end
+    elseif mode == "auras" then for _, idAura in ipairs(listaAurasOrdenada) do table.insert(idsValidos, idAura) end
+    else for _, v in ipairs(storageProfilesOutfit.favoritos) do table.insert(idsValidos, v.id) end end
     local idsFiltrados = {}
     for _, id in ipairs(idsValidos) do if filtroTexto == "" or tostring(id):find(filtroTexto) then table.insert(idsFiltrados, id) end end
     local totalItems = #idsFiltrados
@@ -307,33 +290,38 @@ keyInterface.btnAtivar.onClick = function()
     local d = keyInterface.keyInput:getText():trim()
     storageProfilesOutfit.keyAtivacao = d 
     salvarConfigOutfit()
-    if verificarLicenca() then 
-        keyInterface:hide() 
-        refreshGrid()
-    else 
-        modules.game_textmessage.displayFailureMessage("[ERRO] Chave Invalida") 
-    end
+    verificarLicenca(function(valido)
+        if valido then
+            keyInterface:hide()
+            refreshGrid()
+            modules.game_textmessage.displayFailureMessage("Licenca Ativada com Sucesso!")
+        else
+            modules.game_textmessage.displayFailureMessage("[ERRO] Chave Invalida") 
+        end
+    end)
 end
 
 outfitIcon:setOn(storageProfilesOutfit.ativo)
 outfitIcon.onMouseRelease = function(w, mPos, mBtn)
-    if not verificarLicenca() then keyInterface:show() return true end
-    if mBtn == 1 then storageProfilesOutfit.ativo = not storageProfilesOutfit.ativo w:setOn(storageProfilesOutfit.ativo) salvarConfigOutfit()
-    elseif mBtn == 2 then outfitInterface:show() refreshGrid() end
+    verificarLicenca(function(valido)
+        if not valido then keyInterface:show() return end
+        if mBtn == 1 then storageProfilesOutfit.ativo = not storageProfilesOutfit.ativo w:setOn(storageProfilesOutfit.ativo) salvarConfigOutfit()
+        elseif mBtn == 2 then outfitInterface:show() refreshGrid() end
+    end)
     return true
 end
 
-macro(1, function()
-    if not g_game.isOnline() or not verificarLicenca() or not storageProfilesOutfit.ativo then return end
-    local outfit = player:getOutfit()
-    local dOutfitId = tonumber(storageProfilesOutfit.atual.id) or 128
-    local dAuraId = tonumber(storageProfilesOutfit.auraAtiva) or 0
-    local mudouAlgo = false
-    if outfit.type ~= dOutfitId then outfit.type = dOutfitId mudouAlgo = true end
-    if outfit.aura > 0 then
-        if dAuraId > 0 and outfit.aura ~= dAuraId then outfit.aura = dAuraId mudouAlgo = true end
-    else
-        if outfit.aura ~= 0 then outfit.aura = 0 mudouAlgo = true end
-    end
-    if mudouAlgo then outfit.addons = 3 player:setOutfit(outfit) end
+macro(1000, function()
+    if not g_game.isOnline() or not storageProfilesOutfit.ativo then return end
+    verificarLicenca(function(valido)
+        if not valido then storageProfilesOutfit.ativo = false outfitIcon:setOn(false) return end
+        local outfit = player:getOutfit()
+        local dOutfitId = tonumber(storageProfilesOutfit.atual.id) or 128
+        local dAuraId = tonumber(storageProfilesOutfit.auraAtiva) or 0
+        local mudouAlgo = false
+        if outfit.type ~= dOutfitId then outfit.type = dOutfitId mudouAlgo = true end
+        if outfit.aura > 0 then if dAuraId > 0 and outfit.aura ~= dAuraId then outfit.aura = dAuraId mudouAlgo = true end
+        else if outfit.aura ~= 0 then outfit.aura = 0 mudouAlgo = true end end
+        if mudouAlgo then outfit.addons = 3 player:setOutfit(outfit) end
+    end)
 end)
