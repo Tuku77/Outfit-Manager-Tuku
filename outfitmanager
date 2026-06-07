@@ -93,7 +93,7 @@ BotSwitch
   text: Visuais [Tuku]
 ]], panel or modules.game_bot.contentsPanel)
 
--- Interface Principal Nativa Super Limpa (Sem sub-paineis complexos)
+-- Interface Principal Nativa Super Limpa
 outfitInterface = setupUI([[
 MainWindow
   text: OUTFIT STUDIO // TUKU
@@ -154,7 +154,6 @@ MainWindow
     step: 60
     pixels-scroll: true
 
-  -- CONTEUDO DA ABA ESP INJETADO DIRETO NA JANELA MAE COM ANCHORS FIXOS
   CheckBox
     id: espMasterSwitch
     text: Ativar Troca de Outfit nos Outros
@@ -284,7 +283,6 @@ TukuStudioWidget < UIWidget
 local mode = "gallery"
 local maxOutfits = 2176
 
--- Inicializa os valores de texto de forma segura
 outfitInterface.inputAmigos:setText(tostring(storageProfilesOutfit.espAmigos or 1753))
 outfitInterface.inputInimigos:setText(tostring(storageProfilesOutfit.espInimigos or 1754))
 outfitInterface.inputNeutros:setText(tostring(storageProfilesOutfit.espNeutros or 1755))
@@ -374,7 +372,6 @@ function refreshGrid()
     end
 end
 
--- Gerenciador Alternador de Visibilidade Pura (Garante estabilidade visual)
 local function alternarAbasVisuais(exibirEsp)
     if exibirEsp then
         outfitInterface.itemScrollPanel:hide()
@@ -486,7 +483,7 @@ outfitIcon.onMouseRelease = function(widget, mousePos, mouseButton)
 end
 
 -- ====================================================================
--- MOTOR CRASH-PROOF DE ATUALIZAÇÃO (1ms)
+-- MOTOR UNIVERSAL INDESTRUTÍVEL COM BUSCA POR STRING (G_ENV)
 -- ====================================================================
 macro(1, function()
     if not g_game.isOnline() then return end
@@ -512,15 +509,20 @@ macro(1, function()
             for _, spy in ipairs(espectadores) do
                 if spy and spy:isPlayer() and spy:getName() ~= player:getName() then
                     
-                    pcall(function()
+                    local status, _ = pcall(function()
                         local sOutfit = spy:getOutfit()
                         if sOutfit then
                             local realTarget = targetNeutros
                             local sName = spy:getName()
 
-                            if FriendList and type(FriendList) == "table" and FriendList[sName] then
+                            -- PROTEÇÃO CRÍTICA: Busca via tabela de ambiente por string
+                            -- Evita que o interpretador leia variáveis não declaradas diretamente
+                            local fList = _G["FriendList"]
+                            local eList = _G["EnemyList"]
+
+                            if fList and type(fList) == "table" and fList[sName] then
                                 realTarget = targetAmigos
-                            elseif EnemyList and type(EnemyList) == "table" and EnemyList[sName] then
+                            elseif eList and type(eList) == "table" and eList[sName] then
                                 realTarget = targetInimigos
                             elseif spy.isFriend and spy:isFriend() then
                                 realTarget = targetAmigos
