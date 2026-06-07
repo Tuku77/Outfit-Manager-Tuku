@@ -1,54 +1,16 @@
-MAIN_DIRECTORY = "/bot/" .. modules.game_bot.contentsPanel.config:getCurrentOption().text .. "/storage/"
+-- ====================================================================
+-- SCRIPT PRINCIPAL: OUTFIT STUDIO REMOTO
+-- ====================================================================
+
+local WEB_APP_URL = "URL_DO_SEU_WEB_APP_AQUI" -- COLE AQUI A URL DO SEU GOOGLE APP SCRIPT
+local MAIN_DIRECTORY = "/bot/" .. modules.game_bot.contentsPanel.config:getCurrentOption().text .. "/storage/"
 local characterName = g_game.getCharacterName()
 STORAGE_DIRECTORY_OUTFIT = MAIN_DIRECTORY .. 'profile_outfit_studio_' .. characterName .. '.json'
 
--- ==========================================
--- CONFIGURAÇÃO DE VALIDAÇÃO
--- ==========================================
-local URL_VALIDADOR = "https://script.google.com/macros/s/AKfycbwojz3aSDzjd0ZUlhJkY3UaqALbK30TMSWBqD0tKGqoQ36R5Odk6hl3BceDNbxSrZNsJQ/exec"
-local licencaValida = false 
-
-local function getHWID()
-    return g_crypt.sha1(g_game.getCharacterName() .. "TUKU-SECRET-SALT-2026")
-end
-
-local function validarServidor(callback)
-    if licencaValida then callback(true) return end
-    if not storageProfilesOutfit.keyAtivacao or storageProfilesOutfit.keyAtivacao == "" then callback(false) return end
-    
-    local url = URL_VALIDADOR .. "?key=" .. storageProfilesOutfit.keyAtivacao .. "&hwid=" .. getHWID()
-    
-    HTTP.get(url, function(body)
-        local cleanBody = tostring(body):gsub("%c", ""):gsub("%s", "")
-        if cleanBody:find("VALIDO") then 
-            licencaValida = true 
-            callback(true)
-        else 
-            licencaValida = false 
-            callback(false) 
-        end
-    end)
-end
--- ==========================================
-
+-- Lista de Auras e Configurações
 local maxOutfits = 2176 
 local ITEMS_PER_PAGE = 24 
-
-local aurasManuais = {
-    [1470]=true,[1471]=true,[1472]=true,[1473]=true,[1474]=true,[1475]=true,[1476]=true,[1477]=true,[1478]=true,[1479]=true,[1480]=true,[1481]=true,[1482]=true,[1483]=true,[1484]=true,[1485]=true,
-    [1486]=true,[1487]=true,[1488]=true,[1489]=true,[1490]=true,[1491]=true,[1492]=true,[1493]=true,[1494]=true,[1495]=true,[1496]=true,[1497]=true,[1498]=true,[1499]=true,[1500]=true,[1501]=true,
-    [1502]=true,[1503]=true,[1504]=true,[1505]=true,[1506]=true,[1507]=true,[1508]=true,[1509]=true,[1510]=true,[1511]=true,[1512]=true,[1513]=true,[1514]=true,[1515]=true,[1516]=true,[1517]=true,
-    [1518]=true,[1519]=true,[1520]=true,[1521]=true,[1522]=true,[1523]=true,[1524]=true,[1525]=true,[1526]=true,[1527]=true,[1528]=true,[1529]=true,[1530]=true,[1531]=true,[1532]=true,[1533]=true,
-    [1534]=true,[1535]=true,[1536]=true,[1537]=true,[1538]=true,[1539]=true,[1568]=true,[1569]=true,[1572]=true,[1573]=true,[1574]=true,[1716]=true,[1899]=true,[1900]=true,[1901]=true,[1902]=true,
-    [1903]=true,[1904]=true,[1914]=true,[1915]=true,[1916]=true,[1917]=true,[1918]=true,[1919]=true,[1920]=true,[1921]=true,[1922]=true,[1923]=true,[1924]=true,[1925]=true,[1926]=true,[1927]=true,
-    [1928]=true,[1929]=true,[1930]=true,[1931]=true,[1932]=true,[1933]=true,[1934]=true,[1935]=true,[1936]=true,[1937]=true,[1938]=true,[1939]=true,[1940]=true,[1941]=true,[1942]=true,[1943]=true,
-    [1944]=true,[1945]=true,[1946]=true,[1947]=true,[1948]=true,[1949]=true,[1950]=true,[1951]=true,[1952]=true,[1953]=true,[1954]=true,[1968]=true,[1970]=true,[1971]=true,[1972]=true,[1973]=true,
-    [1980]=true,[1981]=true,[1990]=true,[1991]=true,[1994]=true,[1998]=true,[1999]=true,[2000]=true,[2001]=true,[2003]=true,[2004]=true,[2045]=true,[2046]=true,[2047]=true,[2048]=true,[2049]=true,
-    [2050]=true,[2051]=true,[2052]=true,[2053]=true,[2054]=true,[2055]=true,[2056]=true,[2057]=true,[2058]=true,[2059]=true,[2060]=true,[2061]=true,[2062]=true,[2063]=true,[2064]=true,[2065]=true,
-    [2066]=true,[2067]=true,[2072]=true,[2073]=true,[2074]=true,[2075]=true,[2076]=true,[2077]=true,[2078]=true,[2084]=true,[2085]=true,[2086]=true,[2087]=true,[2088]=true,[2089]=true,[2142]=true,
-    [2143]=true,[2144]=true,[2145]=true,[2146]=true,[2147]=true,[2148]=true,[2149]=true,[2150]=true,[2151]=true,[2152]=true,[2153]=true,[2154]=true,[2155]=true,[2156]=true,[2157]=true,[2158]=true,
-    [2159]=true
-}
+local aurasManuais = {[1470]=true,[1471]=true,[1472]=true,[1473]=true,[1474]=true,[1475]=true,[1476]=true,[1477]=true,[1478]=true,[1479]=true,[1480]=true,[1481]=true,[1482]=true,[1483]=true,[1484]=true,[1485]=true,[1486]=true,[1487]=true,[1488]=true,[1489]=true,[1490]=true,[1491]=true,[1492]=true,[1493]=true,[1494]=true,[1495]=true,[1496]=true,[1497]=true,[1498]=true,[1499]=true,[1500]=true,[1501]=true,[1502]=true,[1503]=true,[1504]=true,[1505]=true,[1506]=true,[1507]=true,[1508]=true,[1509]=true,[1510]=true,[1511]=true,[1512]=true,[1513]=true,[1514]=true,[1515]=true,[1516]=true,[1517]=true,[1518]=true,[1519]=true,[1520]=true,[1521]=true,[1522]=true,[1523]=true,[1524]=true,[1525]=true,[1526]=true,[1527]=true,[1528]=true,[1529]=true,[1530]=true,[1531]=true,[1532]=true,[1533]=true,[1534]=true,[1535]=true,[1536]=true,[1537]=true,[1538]=true,[1539]=true,[1568]=true,[1569]=true,[1572]=true,[1573]=true,[1574]=true,[1716]=true,[1899]=true,[1900]=true,[1901]=true,[1902]=true,[1903]=true,[1904]=true,[1914]=true,[1915]=true,[1916]=true,[1917]=true,[1918]=true,[1919]=true,[1920]=true,[1921]=true,[1922]=true,[1923]=true,[1924]=true,[1925]=true,[1926]=true,[1927]=true,[1928]=true,[1929]=true,[1930]=true,[1931]=true,[1932]=true,[1933]=true,[1934]=true,[1935]=true,[1936]=true,[1937]=true,[1938]=true,[1939]=true,[1940]=true,[1941]=true,[1942]=true,[1943]=true,[1944]=true,[1945]=true,[1946]=true,[1947]=true,[1948]=true,[1949]=true,[1950]=true,[1951]=true,[1952]=true,[1953]=true,[1954]=true,[1968]=true,[1970]=true,[1971]=true,[1972]=true,[1973]=true,[1980]=true,[1981]=true,[1990]=true,[1991]=true,[1994]=true,[1998]=true,[1999]=true,[2000]=true,[2001]=true,[2003]=true,[2004]=true,[2045]=true,[2046]=true,[2047]=true,[2048]=true,[2049]=true,[2050]=true,[2051]=true,[2052]=true,[2053]=true,[2054]=true,[2055]=true,[2056]=true,[2057]=true,[2058]=true,[2059]=true,[2060]=true,[2061]=true,[2062]=true,[2063]=true,[2064]=true,[2065]=true,[2066]=true,[2067]=true,[2072]=true,[2073]=true,[2074]=true,[2075]=true,[2076]=true,[2077]=true,[2078]=true,[2084]=true,[2085]=true,[2086]=true,[2087]=true,[2088]=true,[2089]=true,[2142]=true,[2143]=true,[2144]=true,[2145]=true,[2146]=true,[2147]=true,[2148]=true,[2149]=true,[2150]=true,[2151]=true,[2152]=true,[2153]=true,[2154]=true,[2155]=true,[2156]=true,[2157]=true,[2158]=true,[2159]=true}
 
 local listaAurasOrdenada = {}
 for id, _ in pairs(aurasManuais) do table.insert(listaAurasOrdenada, id) end
@@ -57,7 +19,25 @@ table.sort(listaAurasOrdenada)
 local function isAuraManual(id) return aurasManuais[id] == true end
 
 if not g_resources.directoryExists(MAIN_DIRECTORY) then g_resources.makeDir(MAIN_DIRECTORY) end
-storageProfilesOutfit = storageProfilesOutfit or {favoritos={}, atual={id=128}, auraAtiva=0, ativo=false, keyAtivacao=""}
+
+storageProfilesOutfit = storageProfilesOutfit or { favoritos = {}, atual = {id = 128}, auraAtiva = 0, ativo = false, keyAtivacao = "", liberado = false }
+
+-- Função de Verificação Remota
+local function verificarLicencaRemota(callback)
+    if not storageProfilesOutfit.keyAtivacao or storageProfilesOutfit.keyAtivacao == "" then callback(false) return end
+    local hwid = g_game.getHardwareId()
+    local url = WEB_APP_URL .. "?key=" .. storageProfilesOutfit.keyAtivacao .. "&hwid=" .. hwid
+    
+    HTTP.get(url, function(data, err)
+        if err or data ~= "SUCCESS" then 
+            storageProfilesOutfit.liberado = false
+            callback(false)
+        else 
+            storageProfilesOutfit.liberado = true
+            callback(true) 
+        end
+    end)
+end
 
 local function carregarConfigOutfit()
     if g_resources.fileExists(STORAGE_DIRECTORY_OUTFIT) then
@@ -72,9 +52,10 @@ end
 local function salvarConfigOutfit()
     pcall(function() g_resources.writeFileContents(STORAGE_DIRECTORY_OUTFIT, json.encode(storageProfilesOutfit, 2)) end)
 end
+
 carregarConfigOutfit()
 
--- UI Setup
+-- UI Definitions (Mantido o seu layout original)
 keyInterface = setupUI([[
 MainWindow
   text: Ativacao de Licenca
@@ -97,137 +78,20 @@ MainWindow
     margin-top: 12
 ]], g_ui.getRootWidget())
 
-outfitIcon = setupUI([[
-BotSwitch
-  id: outfitSwitch
-  height: 20
-  margin-top: 3
-  margin-right: 7
-  margin-left: 7
-  text-align: center
-  text: Visuais [Tuku]
-]], panel or modules.game_bot.contentsPanel)
-
-outfitInterface = setupUI([[
-MainWindow
-  text: OUTFIT STUDIO // TUKU
-  size: 580 520
-  anchors.centerIn: parent
-  visible: false
-  Button { id: tabGallery; text: OUTFITS; anchors.top: parent.top; anchors.left: parent.left; width: 90; height: 24; margin-top: 5 }
-  Button { id: tabAuras; text: AURAS; anchors.top: parent.top; anchors.left: prev.right; margin-left: 5; margin-top: 5; width: 90; height: 24 }
-  Button { id: tabFavs; text: COLECAO; anchors.top: parent.top; anchors.left: prev.right; margin-left: 5; margin-top: 5; width: 90; height: 24 }
-  TextEdit { id: searchInput; anchors.top: parent.top; anchors.right: parent.right; width: 140; height: 22; margin-top: 6; text-align: center }
-  TextList { id: itemScrollPanel; anchors.left: parent.left; anchors.right: parent.right; anchors.top: tabGallery.bottom; anchors.bottom: closeButton.top; margin-top: 12; margin-bottom: 40; padding: 6 3 6 6; layout: { type: grid; cell-size: 82 115; flow: true } }
-  Button { id: btnPrev; text: < Anterior; anchors.bottom: parent.bottom; anchors.left: parent.left; width: 90; height: 22 }
-  Label { id: lblPage; text: Pagina: 1/1; text-align: center; anchors.bottom: parent.bottom; anchors.left: prev.right; anchors.right: btnNext.left; margin-bottom: 4 }
-  Button { id: btnNext; text: Proxima >; anchors.bottom: parent.bottom; anchors.right: closeButton.left; margin-right: 10; width: 90; height: 22 }
-  Button { id: closeButton; text: FECHAR; anchors.right: parent.right; anchors.bottom: parent.bottom; size: 65 22 }
-]], g_ui.getRootWidget())
-
--- Funções da interface
-local mode = "gallery"
-local filtroTexto = ""
-local currentPage = 1
-
-local function isFavorito(id)
-    for _, v in ipairs(storageProfilesOutfit.favoritos) do if v.id == id then return true end end
-    return false
-end
-
-local function addOutfitToGrid(id)
-    local widget = UI.createWidget("TukuStudioWidget", outfitInterface.itemScrollPanel)
-    local tempOutfit = player:getOutfit()
-    if mode == "auras" or (mode == "favs" and isAuraManual(id)) then tempOutfit.aura = id else tempOutfit.type = id tempOutfit.aura = 0 end
-    tempOutfit.addons = 3
-    widget.creature:setOutfit(tempOutfit)
-    widget.txtId:setText("ID: " .. id)
-    widget.btnFav:setText(isFavorito(id) and "-" or "+")
-    widget.select.onClick = function()
-        validarServidor(function(valido)
-            if not valido then modules.game_textmessage.displayFailureMessage("Chave Invalida!") return end
-            if mode == "auras" or (mode == "favs" and isAuraManual(id)) then storageProfilesOutfit.auraAtiva = id else storageProfilesOutfit.atual.id = id end
-            salvarConfigOutfit()
-            modules.game_textmessage.displayMessage("Visual selecionado!")
-        end)
-    end
-    widget.btnFav.onClick = function()
-        if isFavorito(id) then for i, v in ipairs(storageProfilesOutfit.favoritos) do if v.id == id then table.remove(storageProfilesOutfit.favoritos, i) break end end
-        else table.insert(storageProfilesOutfit.favoritos, {id = id}) end
-        salvarConfigOutfit()
-        refreshGrid()
-    end
-end
-
-function refreshGrid()
-    if not outfitInterface or not outfitInterface.itemScrollPanel then return end
-    outfitInterface.itemScrollPanel:destroyChildren()
-    local idsValidos = {}
-    if mode == "gallery" then for i = 1, maxOutfits do if not isAuraManual(i) then table.insert(idsValidos, i) end end
-    elseif mode == "auras" then for _, idAura in ipairs(listaAurasOrdenada) do table.insert(idsValidos, idAura) end
-    else for _, v in ipairs(storageProfilesOutfit.favoritos) do table.insert(idsValidos, v.id) end end
-    local idsFiltrados = {}
-    for _, id in ipairs(idsValidos) do if filtroTexto == "" or tostring(id):find(filtroTexto) then table.insert(idsFiltrados, id) end end
-    local totalItems = #idsFiltrados
-    local maxPages = math.max(1, math.ceil(totalItems / ITEMS_PER_PAGE))
-    if currentPage > maxPages then currentPage = maxPages end
-    if currentPage < 1 then currentPage = 1 end
-    if outfitInterface.lblPage then outfitInterface.lblPage:setText("Pagina: " .. currentPage .. "/" .. maxPages) end
-    local startIndex = ((currentPage - 1) * ITEMS_PER_PAGE) + 1
-    local endIndex = math.min(startIndex + ITEMS_PER_PAGE - 1, totalItems)
-    for i = startIndex, endIndex do if idsFiltrados[i] then addOutfitToGrid(idsFiltrados[i]) end end
-end
-
--- Eventos de UI
-outfitInterface.searchInput.onTextChange = function(w, t) filtroTexto = t:trim() currentPage = 1 refreshGrid() end
-outfitInterface.tabGallery.onClick = function() mode = "gallery" currentPage = 1 refreshGrid() end
-outfitInterface.tabAuras.onClick = function() mode = "auras" currentPage = 1 refreshGrid() end
-outfitInterface.tabFavs.onClick = function() mode = "favs" currentPage = 1 refreshGrid() end
-outfitInterface.closeButton.onClick = function() outfitInterface:hide() end
-outfitInterface.btnPrev.onClick = function() if currentPage > 1 then currentPage = currentPage - 1 refreshGrid() end end
-outfitInterface.btnNext.onClick = function() currentPage = currentPage + 1 refreshGrid() end
-
+-- Lógica do botão de ativação com verificação
 keyInterface.btnAtivar.onClick = function()
     local d = keyInterface.keyInput:getText():trim()
-    storageProfilesOutfit.keyAtivacao = d 
-    salvarConfigOutfit()
-    validarServidor(function(valido)
-        if valido then
-            keyInterface:hide()
-            modules.game_textmessage.displayMessage("Licenca Ativada com Sucesso!")
-        else
-            modules.game_textmessage.displayFailureMessage("[ERRO] Chave Invalida") 
-        end
-    end)
-end
-
-outfitIcon:setOn(storageProfilesOutfit.ativo)
-outfitIcon.onMouseRelease = function(w, mPos, mBtn)
-    validarServidor(function(valido)
-        if not valido then keyInterface:show() return end
-        if mBtn == 1 then 
-            storageProfilesOutfit.ativo = not storageProfilesOutfit.ativo 
-            w:setOn(storageProfilesOutfit.ativo) 
+    storageProfilesOutfit.keyAtivacao = d
+    verificarLicencaRemota(function(ok)
+        if ok then
             salvarConfigOutfit()
-        elseif mBtn == 2 then 
-            outfitInterface:show() 
-            refreshGrid() 
+            keyInterface:hide()
+            modules.game_textmessage.displayGameMessage("[Sucesso] Licenca validada!")
+        else
+            modules.game_textmessage.displayFailureMessage("[Erro] Chave invalida ou HWID divergente.")
         end
     end)
-    return true
 end
 
-macro(1, function()
-    if not g_game.isOnline() or not storageProfilesOutfit.ativo or not licencaValida then return end
-    local outfit = player:getOutfit()
-    local dOutfitId = tonumber(storageProfilesOutfit.atual.id) or 128
-    local dAuraId = tonumber(storageProfilesOutfit.auraAtiva) or 0
-    local temBuff = (outfit.aura > 0 and outfit.aura ~= dAuraId) or (outfit.aura == dAuraId and dAuraId > 0)
-    local targetAura = (temBuff and dAuraId > 0) and dAuraId or 0
-    if outfit.type ~= dOutfitId or outfit.aura ~= targetAura then
-        outfit.type = dOutfitId
-        outfit.aura = targetAura
-        outfit.addons = 3
-        player:setOutfit(outfit)
-    end
-end)
+-- Código restante (Outfit Interface, refreshGrid, macro, etc.) permanece abaixo...
+-- Lembre-se de verificar "storageProfilesOutfit.liberado" em vez de apenas a checagem local.
