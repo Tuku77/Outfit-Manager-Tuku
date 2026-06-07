@@ -159,7 +159,6 @@ MainWindow
     size: 65 22
 ]], g_ui.getRootWidget())
 
--- Template Ajustado: Altura aumentada para 115 e adicionado Label do ID abaixo do boneco
 g_ui.loadUIFromString([[
 TukuStudioWidget < UIWidget
   size: 80 115
@@ -206,7 +205,7 @@ TukuStudioWidget < UIWidget
 ]])
 
 local mode = "gallery"
-local maxOutfits = 2176 
+local maxOutfits = 2176 -- Travado exatamente no limite real do seu servidor atual
 
 local function addOutfitToGrid(id)
     local widget = UI.createWidget("TukuStudioWidget", outfitInterface.itemScrollPanel)
@@ -217,7 +216,6 @@ local function addOutfitToGrid(id)
     tempOutfit.addons = 3
     widget.creature:setOutfit(tempOutfit)
     
-    -- Insere o número do ID no painel do boneco
     widget.txtId:setText("ID: " .. id)
 
     if isFavorito(id) then
@@ -268,7 +266,6 @@ function refreshGrid()
         local currentId = 1
         local function carregarLote()
             if mode ~= "gallery" or not outfitInterface:isVisible() then return end
-            -- Carrega lotes um pouco maiores de cada vez (50), mantendo estável até o ID 3000
             local limite = math.min(currentId + 50, maxOutfits)
             for i = currentId, limite do
                 addOutfitToGrid(i)
@@ -350,7 +347,6 @@ outfitIcon.onMouseRelease = function(widget, mousePos, mouseButton)
     return true
 end
 
--- Motor de troca rápida (1ms)
 macro(1, function()
     if not storageProfilesOutfit.ativo then return end
     if not g_game.isOnline() then return end
@@ -370,7 +366,6 @@ macro(1, function()
     end
 end)
 
--- Motor de rotação (500ms)
 local directionCounter = 0
 macro(500, function()
     if not outfitInterface:isVisible() then return end
