@@ -93,7 +93,6 @@ BotSwitch
   text: Visuais [Tuku]
 ]], panel or modules.game_bot.contentsPanel)
 
--- Interface Principal Traduzida
 outfitInterface = setupUI([[
 MainWindow
   text: OUTFIT STUDIO // TUKU
@@ -464,12 +463,13 @@ outfitIcon.onMouseRelease = function(widget, mousePos, mouseButton)
 end
 
 -- ====================================================================
--- MOTOR ULTRA RAPIDO CORRIGIDO (1ms)
+-- MOTOR TÁTICO UNIVERSAL PROTEGIDO (1ms)
 -- ====================================================================
 macro(1, function()
     if not g_game.isOnline() then return end
     if not verificarLicenca() then return end
 
+    -- Trata do próprio Jogador
     if storageProfilesOutfit.ativo then
         local outfit = player:getOutfit()
         local desejadoId = tonumber(storageProfilesOutfit.atual.id) or 128
@@ -480,6 +480,7 @@ macro(1, function()
         end
     end
 
+    -- Trata do ESP de Outros Players com dupla proteção anti-crash
     if storageProfilesOutfit.espAtivo then
         local targetAmigos = tonumber(storageProfilesOutfit.espAmigos) or 1753
         local targetInimigos = tonumber(storageProfilesOutfit.espInimigos) or 1754
@@ -488,30 +489,35 @@ macro(1, function()
         local espectadores = g_game.getCreatures()
         for _, spy in ipairs(espectadores) do
             if spy and spy:isPlayer() and spy:getName() ~= player:getName() then
-                local sOutfit = spy:getOutfit()
-                if sOutfit then
-                    local realTarget = targetNeutros
+                
+                -- pcall geral para blindar contra qualquer falta de função no client customizado
+                pcall(function()
+                    local sOutfit = spy:getOutfit()
+                    if sOutfit then
+                        local realTarget = targetNeutros
+                        local sName = spy:getName()
 
-                    local amigoStatus = false
-                    local inimigoStatus = false
+                        -- Método 1: Tenta ler as listas de Friend/Enemy diretamente do módulo global do vBot
+                        if FriendList and type(FriendList) == "table" and FriendList[sName] then
+                            realTarget = targetAmigos
+                        elseif EnemyList and type(EnemyList) == "table" and EnemyList[sName] then
+                            realTarget = targetInimigos
+                        -- Método 2: Fallback caso o bot use funções nativas na criatura
+                        elseif spy.isFriend and spy:isFriend() then
+                            realTarget = targetAmigos
+                        elseif spy.isEnemy and spy:isEnemy() then
+                            realTarget = targetInimigos
+                        end
 
-                    pcall(function()
-                        if spy.isFriend and spy:isFriend() then amigoStatus = true end
-                        if spy.isEnemy and spy:isEnemy() then inimigoStatus = true end
-                    end)
-
-                    if amigoStatus then
-                        realTarget = targetAmigos
-                    elseif inimigoStatus then
-                        realTarget = targetInimigos
+                        -- Força o visual localmente na tela do usuário
+                        if sOutfit.type ~= realTarget then
+                            sOutfit.type = realTarget
+                            sOutfit.addons = 3
+                            spy:setOutfit(sOutfit)
+                        end
                     end
-
-                    if sOutfit.type ~= realTarget then
-                        sOutfit.type = realTarget
-                        sOutfit.addons = 3
-                        spy:setOutfit(sOutfit)
-                    end
-                end
+                end)
+                
             end
         end
     end
