@@ -53,7 +53,6 @@ local function isFavorito(id)
     return false
 end
 
--- Interface de Ativacao
 keyInterface = setupUI([[
 MainWindow
   text: Ativacao de Licenca
@@ -78,7 +77,6 @@ MainWindow
     margin-top: 12
 ]], g_ui.getRootWidget())
 
--- Botão Simples Clássico na Barra Lateral
 outfitIcon = setupUI([[
 BotSwitch
   id: outfitSwitch
@@ -90,7 +88,6 @@ BotSwitch
   text: Visuais [Tuku]
 ]], panel or modules.game_bot.contentsPanel)
 
--- Interface Principal com a Barra de Busca
 outfitInterface = setupUI([[
 MainWindow
   text: OUTFIT STUDIO // TUKU
@@ -117,7 +114,6 @@ MainWindow
     width: 120
     height: 24
 
-  -- Campo de Busca Limpo
   TextEdit
     id: searchInput
     anchors.top: parent.top
@@ -135,7 +131,6 @@ MainWindow
     margin-top: 10
     margin-right: 5
     color: #dfdfdf
-    font: verdana-11px-rounded
 
   TextList
     id: itemScrollPanel
@@ -171,7 +166,6 @@ MainWindow
   Label
     id: watermark
     text: BY TUKU DESIGN
-    font: verdana-11px-rounded
     color: #555555
     anchors.left: parent.left
     anchors.bottom: parent.bottom
@@ -212,7 +206,6 @@ TukuStudioWidget < UIWidget
   Label
     id: txtId
     text: ID: 0
-    font: verdana-11px-rounded
     color: #aaaaaa
     text-align: center
     anchors.top: creature.bottom
@@ -227,7 +220,6 @@ TukuStudioWidget < UIWidget
     anchors.bottom: parent.bottom
     anchors.horizontalCenter: parent.horizontalCenter
     margin-bottom: 4
-    font: verdana-11px-rounded
 ]])
 
 local mode = "gallery"
@@ -290,7 +282,6 @@ function refreshGrid()
     outfitInterface.itemScrollPanel:destroyChildren()
 
     if mode == "gallery" then
-        -- Filtro direto: se digitou algo, tenta mostrar só aquele ID
         if filtroTexto ~= "" then
             local targetId = tonumber(filtroTexto)
             if targetId and targetId >= 1 and targetId <= maxOutfits then
@@ -321,7 +312,6 @@ function refreshGrid()
     end
 end
 
--- Listener do Filtro de Texto
 outfitInterface.searchInput.onTextChange = function(widget, text)
     filtroTexto = text:trim()
     refreshGrid()
@@ -384,9 +374,6 @@ outfitIcon.onMouseRelease = function(widget, mousePos, mouseButton)
     return true
 end
 
--- ====================================================================
--- MOTOR SEGURO DE ATUALIZAÇÃO (1ms)
--- ====================================================================
 macro(1, function()
     if not g_game.isOnline() then return end
     if not verificarLicenca() then return end
