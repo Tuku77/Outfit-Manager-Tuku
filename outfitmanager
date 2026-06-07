@@ -10,7 +10,8 @@ storageProfilesOutfit = storageProfilesOutfit or {
     favoritos = {},
     atual = {id = 128},
     ativo = false,
-    keyAtivacao = ""
+    keyAtivacao = "",
+    modoAleatorio = false
 }
 
 local keysValidas = {
@@ -78,18 +79,32 @@ MainWindow
     margin-top: 12
 ]], g_ui.getRootWidget())
 
-outfitIcon = setupUI([[
-BotSwitch
-  id: outfitSwitch
+-- Icone do Painel com Botao Aleatorio Acoplado ao lado
+outfitIconPanel = setupUI([[
+Panel
   height: 20
   margin-top: 3
   margin-right: 7
   margin-left: 7
-  text-align: center
-  text: Visuais [Tuku]
+  layout:
+    type: horizontalBox
+
+  BotSwitch
+    id: outfitSwitch
+    text: Visuais [Tuku]
+    width: 115
+
+  Button
+    id: btnRandom
+    text: 🎲
+    width: 25
+    margin-left: 3
 ]], panel or modules.game_bot.contentsPanel)
 
--- Interface Principal Limpa (Apenas o Core Estavel)
+outfitIcon = outfitIconPanel.outfitSwitch
+btnRandomIcon = outfitIconPanel.btnRandom
+
+-- Interface Principal Completa com Filtro de Busca
 outfitInterface = setupUI([[
 MainWindow
   text: OUTFIT STUDIO // TUKU
@@ -115,6 +130,26 @@ MainWindow
     margin-top: 5
     width: 120
     height: 24
+
+  -- Barra de Busca Compacta
+  TextEdit
+    id: searchInput
+    anchors.top: parent.top
+    anchors.right: parent.right
+    width: 140
+    height: 22
+    margin-top: 6
+    text-align: center
+
+  Label
+    id: lblSearch
+    text: Buscar ID:
+    anchors.top: parent.top
+    anchors.right: searchInput.left
+    margin-top: 10
+    margin-right: 5
+    color: #dfdfdf
+    font: verdana-11px-rounded
 
   TextList
     id: itemScrollPanel
@@ -211,6 +246,7 @@ TukuStudioWidget < UIWidget
 
 local mode = "gallery"
 local maxOutfits = 2176
+local filtroTexto = ""
 
 local function addOutfitToGrid(id)
     local widget = UI.createWidget("TukuStudioWidget", outfitInterface.itemScrollPanel)
@@ -233,6 +269,8 @@ local function addOutfitToGrid(id)
 
     widget.select.onClick = function()
         if not verificarLicenca() then return end
+        storageProfilesOutfit.modoAleatorio = false
+        btnRandomIcon:setOn(false)
         storageProfilesOutfit.atual.id = id
         salvarConfigOutfit()
     end
@@ -268,31 +306,49 @@ function refreshGrid()
     outfitInterface.itemScrollPanel:destroyChildren()
 
     if mode == "gallery" then
+        -- Se houver um filtro digitado, mostra apenas o ID específico imediatamente
+        if filtroTexto ~= "" then
+            local targetId = tonumber(filtroTexto)
+            if targetId and targetId >= 1 and targetId <= maxOutfits then
+                addOutfitToGrid(targetId)
+            end
+            return
+        end
+
         local currentId = 1
         local function carregarLote()
-            if mode ~= "gallery" or not outfitInterface:isVisible() then return end
-            local limite = math.min(currentId + 50, maxOutfits)
+            if mode ~= "gallery" or filtroTexto ~= "" or not outfitInterface:isVisible() then return end
+            local limite = math.min(currentId + 40, maxOutfits)
             for i = currentId, limite do
                 addOutfitToGrid(i)
             end
             currentId = limite + 1
             if currentId <= maxOutfits then
-                schedule(15, carregarLote)
+                schedule(12, carregarLote)
             end
         end
         carregarLote()
     elseif mode == "favs" then
-        if #storageProfilesOutfit.favoritos == 0 then
-            local label = UI.createWidget("Label", outfitInterface.itemScrollPanel)
-            label:setText("SUA COLECAO ESTA VAZIA")
-            label:setColor("#888888")
-            return
+        local exibiuAlgum = false
+        for _, fav in ipairs(storageProfilesOutfit.favoritos) do
+            if filtroTexto == "" or tostring(fav.id):find(filtroTexto) then
+                addOutfitToGrid(fav.id)
+                exibiuAlgum = true
+            end
         end
 
-        for _, fav in ipairs(storageProfilesOutfit.favoritos) do
-            addOutfitToGrid(fav.id)
+        if not exibiuAlgum then
+            local label = UI.createWidget("Label", outfitInterface.itemScrollPanel)
+            label:setText(filtroTexto == "" and "SUA COLECAO ESTA VAZIA" or "NENHUM FAVORITO ENCONTRADO")
+            label:setColor("#888888")
         end
     end
+end
+
+-- Evento de Digitação da Barra de Busca
+outfitInterface.searchInput.onTextChange = function(widget, text)
+    filtroTexto = text:trim()
+    refreshGrid()
 end
 
 outfitInterface.tabGallery.onClick = function()
@@ -325,6 +381,21 @@ keyInterface.btnAtivar.onClick = function()
 end
 
 outfitIcon:setOn(storageProfilesOutfit.ativo)
+btnRandomIcon:setOn(storageProfilesOutfit.modoAleatorio)
+
+-- Evento do botão de dados (Modo Aleatório)
+btnRandomIcon.onClick = function(widget)
+    if not verificarLicenca() then
+        keyInterface:show()
+        return true
+    end
+    storageProfilesOutfit.modoAleatorio = not storageProfilesOutfit.modoAleatorio
+    widget:setOn(storageProfilesOutfit.modoAleatorio)
+    salvarConfigOutfit()
+    if storageProfilesOutfit.modoAleatorio then
+        modules.game_textmessage.displayStatusMessage("Modo Visual Aleatorio: ATIVADO")
+    end
+end
 
 outfitIcon.onMouseRelease = function(widget, mousePos, mouseButton)
     if mouseButton == 1 then
@@ -353,12 +424,24 @@ outfitIcon.onMouseRelease = function(widget, mousePos, mouseButton)
 end
 
 -- ====================================================================
--- MOTOR SEGURO DE ATUALIZAÇÃO (1ms)
+-- MOTOR SEGURO DE ATUALIZAÇÃO E SORTEIO (1ms)
 -- ====================================================================
+local ultimoSorteio = 0
+
 macro(1, function()
     if not g_game.isOnline() then return end
     if not verificarLicenca() then return end
 
+    -- Lógica do Modo Aleatório (Muda o ID a cada 3 segundos se o switch principal e o dado estiverem ativos)
+    if storageProfilesOutfit.ativo and storageProfilesOutfit.modoAleatorio then
+        local tempoAtual = os.time()
+        if tempoAtual - ultimoSorteio >= 3 then
+            storageProfilesOutfit.atual.id = math.random(1, maxOutfits)
+            ultimoSorteio = tempoAtual
+        end
+    end
+
+    -- Aplica o visual no player
     if storageProfilesOutfit.ativo then
         local outfit = player:getOutfit()
         local desejadoId = tonumber(storageProfilesOutfit.atual.id) or 128
