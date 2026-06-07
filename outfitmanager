@@ -77,7 +77,7 @@ MainWindow
     margin-top: 12
 ]], g_ui.getRootWidget())
 
--- COMBINADO ATIVO: Sinalizador "1" adicionado ao texto do BotSwitch
+-- COMBINADO ATIVO: Mudança para o sinalizador "2"
 outfitIcon = setupUI([[
 BotSwitch
   id: outfitSwitch
@@ -86,7 +86,7 @@ BotSwitch
   margin-right: 7
   margin-left: 7
   text-align: center
-  text: Visuais [Tuku]1
+  text: Visuais [Tuku]2
 ]], panel or modules.game_bot.contentsPanel)
 
 outfitInterface = setupUI([[
@@ -141,12 +141,12 @@ MainWindow
     anchors.bottom: separator.top
     margin-top: 12
     margin-bottom: 12
-    margin-right: 5
-    padding: 5
+    margin-right: 2
+    padding: 6 3 6 6
     vertical-scrollbar: mainScrollBar
     layout:
       type: grid
-      cell-size: 80 115
+      cell-size: 82 115
       flow: true
 
   VerticalScrollBar
@@ -182,7 +182,7 @@ MainWindow
 
 g_ui.loadUIFromString([[
 TukuStudioWidget < UIWidget
-  size: 80 115
+  size: 82 115
   background-color: #1c1c1c
   border: 1 #282828
   margin: 2
@@ -217,7 +217,7 @@ TukuStudioWidget < UIWidget
   Button
     id: select
     text: USAR
-    size: 70 18
+    size: 72 18
     anchors.bottom: parent.bottom
     anchors.horizontalCenter: parent.horizontalCenter
     margin-bottom: 4
