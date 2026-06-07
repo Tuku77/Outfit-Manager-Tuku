@@ -1,8 +1,9 @@
--- LIMPEZA DE SEGURANÇA (Resolve a duplicidade de botões e scrolls)
+-- LIMPEZA DE SEGURANÇA (Resolve a duplicidade)
 if outfitIcon then outfitIcon:destroy() end
 if outfitInterface then outfitInterface:destroy() end
 if keyInterface then keyInterface:destroy() end
 
+-- SINALIZADOR 2
 MAIN_DIRECTORY = "/bot/" .. modules.game_bot.contentsPanel.config:getCurrentOption().text .. "/storage/"
 local characterName = g_game.getCharacterName()
 STORAGE_DIRECTORY_OUTFIT = MAIN_DIRECTORY .. 'profile_outfit_studio_' .. characterName .. '.json'
@@ -63,7 +64,7 @@ BotSwitch
   margin-right: 7
   margin-left: 7
   text-align: center
-  text: Visuais [Tuku]1
+  text: Visuais [Tuku]2
 ]], panel or modules.game_bot.contentsPanel)
 
 outfitInterface = setupUI([[
@@ -76,7 +77,6 @@ MainWindow
   Button {id: tabAuras, text: AURAS, anchors: {top: parent.top, left: tabGallery.right}, size: 90 24, margin: 5}
   Button {id: tabFavs, text: COLECAO, anchors: {top: parent.top, left: tabAuras.right}, size: 90 24, margin: 5}
   TextEdit {id: searchInput, anchors: {top: parent.top, right: parent.right}, size: 140 22, margin: 6, text-align: center}
-  -- Ajuste: anchors.right: parent.right reduzido com margin-right para tirar o espaço sobrando
   TextList {id: itemScrollPanel, anchors: {left: parent.left, right: parent.right, top: tabGallery.bottom, bottom: closeButton.top}, margin-left: 12, margin-right: 62, margin-top: 12, margin-bottom: 10, padding: 6, vertical-scrollbar: mainScrollBar, layout: {type: grid, cell-size: 82 115, flow: true}}
   VerticalScrollBar {id: mainScrollBar, anchors: {top: itemScrollPanel.top, bottom: itemScrollPanel.bottom, right: parent.right}, margin-right: 12, step: 60}
   Button {id: closeButton, text: FECHAR, anchors: {right: parent.right, bottom: parent.bottom}, size: 65 22}
