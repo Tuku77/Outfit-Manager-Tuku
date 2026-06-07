@@ -5,7 +5,7 @@ STORAGE_DIRECTORY_OUTFIT = MAIN_DIRECTORY .. 'profile_outfit_studio_' .. charact
 -- ==========================================
 -- CONFIGURAÇÃO DE VALIDAÇÃO COM HWID
 -- ==========================================
-local URL_VALIDADOR = "https://script.google.com/macros/s/AKfycbx_cmCasUA1bsBHSxf2eiBE3rBx7ANRoKTWhK83lsyCngWYSFb8tbby8uJ461TA0gC8Bw/exec"
+local URL_VALIDADOR = "https://script.google.com/macros/s/AKfycbwojz3aSDzjd0ZUlhJkY3UaqALbK30TMSWBqD0tKGqoQ36R5Odk6hl3BceDNbxSrZNsJQ/exec"
 local licencaValida = false 
 
 local function getHWID()
