@@ -6,11 +6,16 @@ if not g_resources.directoryExists(MAIN_DIRECTORY) then
     g_resources.makeDir(MAIN_DIRECTORY)
 end
 
+-- Storage atualizado com suporte para skins de terceiros
 storageProfilesOutfit = storageProfilesOutfit or {
     favoritos = {},
     atual = {id = 128},
     ativo = false,
-    keyAtivacao = ""
+    keyAtivacao = "",
+    espAtivo = false,
+    espAmigos = 1753,
+    espInimigos = 1754,
+    espNeutros = 1755
 }
 
 local keysValidas = {
@@ -25,6 +30,10 @@ local function carregarConfigOutfit()
             return json.decode(g_resources.readFileContents(STORAGE_DIRECTORY_OUTFIT))
         end)
         if status and type(result) == "table" then
+            -- Garante que se o usuário tiver um arquivo antigo, os novos campos sejam criados
+            for k, v in pairs(storageProfilesOutfit) do
+                if result[k] == nil then result[k] = v end
+            end
             storageProfilesOutfit = result
         end
     end
@@ -50,6 +59,7 @@ local function isFavorito(id)
     return false
 end
 
+-- Interface de Ativação Clean
 keyInterface = setupUI([[
 MainWindow
   text: Activation
@@ -85,6 +95,7 @@ BotSwitch
   text: Outfits [Tuku]
 ]], panel or modules.game_bot.contentsPanel)
 
+-- Interface Principal Expandida para comportar a nova aba e painéis
 outfitInterface = setupUI([[
 MainWindow
   text: OUTFIT STUDIO // TUKU
@@ -97,7 +108,7 @@ MainWindow
     text: ALL OUTFITS
     anchors.top: parent.top
     anchors.left: parent.left
-    width: 130
+    width: 120
     height: 24
     margin-top: 5
 
@@ -106,11 +117,22 @@ MainWindow
     text: MY COLLECTION
     anchors.top: parent.top
     anchors.left: tabGallery.right
-    margin-left: 6
+    margin-left: 5
     margin-top: 5
-    width: 130
+    width: 120
     height: 24
 
+  Button
+    id: tabEsp
+    text: ESP SKINS
+    anchors.top: parent.top
+    anchors.left: tabFavs.right
+    margin-left: 5
+    margin-top: 5
+    width: 120
+    height: 24
+
+  -- Painel Principal de Lista de Roupas
   TextList
     id: itemScrollPanel
     anchors.left: parent.left
@@ -134,6 +156,64 @@ MainWindow
     anchors.right: parent.right
     step: 60
     pixels-scroll: true
+
+  -- Novo Painel Exclusivo para Configuração de Outros Jogadores
+  Panel
+    id: espPanel
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.top: tabGallery.bottom
+    anchors.bottom: separator.top
+    margin-top: 12
+    margin-bottom: 12
+    visible: false
+
+    BotSwitch
+      id: espMasterSwitch
+      text: Ativar Target ESP Skins
+      anchors.top: parent.top
+      anchors.left: parent.left
+      anchors.right: parent.right
+      height: 22
+
+    Label
+      text: ID Outfit Amigos (Friend List):
+      anchors.top: espMasterSwitch.bottom
+      anchors.left: parent.left
+      margin-top: 20
+
+    TextEdit
+      id: inputAmigos
+      anchors.top: espMasterSwitch.bottom
+      anchors.right: parent.right
+      width: 100
+      margin-top: 16
+
+    Label
+      text: ID Outfit Inimigos (Enemy List):
+      anchors.top: inputAmigos.bottom
+      anchors.left: parent.left
+      margin-top: 15
+
+    TextEdit
+      id: inputInimigos
+      anchors.top: inputAmigos.bottom
+      anchors.right: parent.right
+      width: 100
+      margin-top: 11
+
+    Label
+      text: ID Outfit Neutros / Aleatorios:
+      anchors.top: inputInimigos.bottom
+      anchors.left: parent.left
+      margin-top: 15
+
+    TextEdit
+      id: inputNeutros
+      anchors.top: inputInimigos.bottom
+      anchors.right: parent.right
+      width: 100
+      margin-top: 11
 
   HorizontalSeparator
     id: separator
@@ -205,7 +285,13 @@ TukuStudioWidget < UIWidget
 ]])
 
 local mode = "gallery"
-local maxOutfits = 2176 -- Travado exatamente no limite real do seu servidor atual
+local maxOutfits = 2176
+
+-- Inicializa valores nos campos da aba ESP
+outfitInterface.espPanel.inputAmigos:setText(tostring(storageProfilesOutfit.espAmigos))
+outfitInterface.espPanel.inputInimigos:setText(tostring(storageProfilesOutfit.espInimigos))
+outfitInterface.espPanel.inputNeutros:setText(tostring(storageProfilesOutfit.espNeutros))
+outfitInterface.espPanel.espMasterSwitch:setOn(storageProfilesOutfit.espAtivo)
 
 local function addOutfitToGrid(id)
     local widget = UI.createWidget("TukuStudioWidget", outfitInterface.itemScrollPanel)
@@ -276,7 +362,7 @@ function refreshGrid()
             end
         end
         carregarLote()
-    else
+    elseif mode == "favs" then
         if #storageProfilesOutfit.favoritos == 0 then
             local label = UI.createWidget("Label", outfitInterface.itemScrollPanel)
             label:setText("COLLECTION IS EMPTY")
@@ -290,14 +376,53 @@ function refreshGrid()
     end
 end
 
+-- Controle das Abas de Navegação
 outfitInterface.tabGallery.onClick = function()
     mode = "gallery"
+    outfitInterface.espPanel:hide()
+    outfitInterface.itemScrollPanel:show()
+    outfitInterface.mainScrollBar:show()
     refreshGrid()
 end
 
 outfitInterface.tabFavs.onClick = function()
     mode = "favs"
+    outfitInterface.espPanel:hide()
+    outfitInterface.itemScrollPanel:show()
+    outfitInterface.mainScrollBar:show()
     refreshGrid()
+end
+
+outfitInterface.tabEsp.onClick = function()
+    mode = "esp"
+    outfitInterface.itemScrollPanel:hide()
+    outfitInterface.mainScrollBar:hide()
+    outfitInterface.espPanel:show()
+end
+
+-- Ouvintes para salvar alterações na aba ESP em tempo real
+outfitInterface.espPanel.espMasterSwitch.onClick = function(widget)
+    storageProfilesOutfit.espAtivo = not storageProfilesOutfit.espAtivo
+    widget:setOn(storageProfilesOutfit.espAtivo)
+    salvarConfigOutfit()
+end
+
+outfitInterface.espPanel.inputAmigos.onTextChange = function(widget, text)
+    local val = tonumber(text) or 1753
+    storageProfilesOutfit.espAmigos = val
+    salvarConfigOutfit()
+end
+
+outfitInterface.espPanel.inputInimigos.onTextChange = function(widget, text)
+    local val = tonumber(text) or 1754
+    storageProfilesOutfit.espInimigos = val
+    salvarConfigOutfit()
+end
+
+outfitInterface.espPanel.inputNeutros.onTextChange = function(widget, text)
+    local val = tonumber(text) or 1755
+    storageProfilesOutfit.espNeutros = val
+    salvarConfigOutfit()
 end
 
 outfitInterface.closeButton.onClick = function()
@@ -342,33 +467,64 @@ outfitIcon.onMouseRelease = function(widget, mousePos, mouseButton)
         outfitInterface:show()
         outfitInterface:raise()
         outfitInterface:focus()
-        refreshGrid()
+        if mode ~= "esp" then refreshGrid() end
     end
     return true
 end
 
+-- ====================================================================
+-- MOTOR ULTRA RÁPIDO (1ms) - GERENCIA O PLAYER E O TARGET ESP
+-- ====================================================================
 macro(1, function()
-    if not storageProfilesOutfit.ativo then return end
     if not g_game.isOnline() then return end
-    if not verificarLicenca() then 
-        storageProfilesOutfit.ativo = false
-        outfitIcon:setOn(false)
-        return 
+    if not verificarLicenca() then return end
+
+    -- 1. Gerencia a skin do próprio Jogador
+    if storageProfilesOutfit.ativo then
+        local outfit = player:getOutfit()
+        local desejadoId = storageProfilesOutfit.atual.id
+        if outfit.type ~= desejadoId then
+            outfit.type = desejadoId
+            outfit.addons = 3
+            player:setOutfit(outfit)
+        end
     end
 
-    local outfit = player:getOutfit()
-    local desejadoId = storageProfilesOutfit.atual.id
+    -- 2. Novo Motor ESP: Gerencia a skin de Amigos, Inimigos e Neutros
+    if storageProfilesOutfit.espAtivo then
+        local targetAmigos = storageProfilesOutfit.espAmigos
+        local targetInimigos = storageProfilesOutfit.espInimigos
+        local targetNeutros = storageProfilesOutfit.espNeutros
+        
+        local espectadores = g_game.getCreatures()
+        for _, spy in ipairs(espectadores) do
+            -- Filtra apenas outros players reais na tela
+            if spy:isPlayer() and spy:getName() ~= player:getName() then
+                local sOutfit = spy:getOutfit()
+                local realTarget = targetNeutros
 
-    if outfit.type ~= desejadoId then
-        outfit.type = desejadoId
-        outfit.addons = 3
-        player:setOutfit(outfit)
+                -- Checa se é amigo ou inimigo usando as listas nativas do Bot
+                if spy:isFriend() then
+                    realTarget = targetAmigos
+                elseif spy:isEnemy() then
+                    realTarget = targetInimigos
+                end
+
+                -- Se a outfit atual dele for diferente da estipulada, força localmente
+                if sOutfit.type ~= realTarget then
+                    sOutfit.type = realTarget
+                    sOutfit.addons = 3
+                    spy:setOutfit(sOutfit)
+                end
+            end
+        end
     end
 end)
 
+-- Motor de rotação (500ms)
 local directionCounter = 0
 macro(500, function()
-    if not outfitInterface:isVisible() then return end
+    if not outfitInterface:isVisible() or mode == "esp" then return end
     for _, c in ipairs(outfitInterface.itemScrollPanel:getChildren()) do    
         if c.creature then
             c.creature:setDirection(directionCounter)
@@ -379,5 +535,5 @@ macro(500, function()
 end)
 
 if verificarLicenca() then
-    refreshGrid()
+    if mode ~= "esp" then refreshGrid() end
 end
