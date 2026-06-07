@@ -57,7 +57,7 @@ local function isFavorito(id)
     return false
 end
 
--- Interface de Ativacao - PT-BR
+-- Interface de Ativacao
 keyInterface = setupUI([[
 MainWindow
   text: Ativacao de Licenca
@@ -93,6 +93,7 @@ BotSwitch
   text: Visuais [Tuku]
 ]], panel or modules.game_bot.contentsPanel)
 
+-- Interface Principal Estabilizada
 outfitInterface = setupUI([[
 MainWindow
   text: OUTFIT STUDIO // TUKU
@@ -172,6 +173,7 @@ MainWindow
       height: 22
 
     Label
+      id: lblAmigos
       text: ID Outfit - Amigos (Friend List):
       anchors.top: espMasterSwitch.bottom
       anchors.left: parent.left
@@ -185,6 +187,7 @@ MainWindow
       margin-top: 16
 
     Label
+      id: lblInimigos
       text: ID Outfit - Inimigos (Enemy List):
       anchors.top: inputAmigos.bottom
       anchors.left: parent.left
@@ -198,6 +201,7 @@ MainWindow
       margin-top: 11
 
     Label
+      id: lblNeutros
       text: ID Outfit - Neutros / Outros:
       anchors.top: inputInimigos.bottom
       anchors.left: parent.left
@@ -282,10 +286,11 @@ TukuStudioWidget < UIWidget
 local mode = "gallery"
 local maxOutfits = 2176
 
-outfitInterface.espPanel.inputAmigos:setText(tostring(storageProfilesOutfit.espAmigos))
-outfitInterface.espPanel.inputInimigos:setText(tostring(storageProfilesOutfit.espInimigos))
-outfitInterface.espPanel.inputNeutros:setText(tostring(storageProfilesOutfit.espNeutros))
-outfitInterface.espPanel.espMasterSwitch:setOn(storageProfilesOutfit.espAtivo)
+-- Força valores iniciais seguros
+outfitInterface.espPanel.inputAmigos:setText(tostring(storageProfilesOutfit.espAmigos or 1753))
+outfitInterface.espPanel.inputInimigos:setText(tostring(storageProfilesOutfit.espInimigos or 1754))
+outfitInterface.espPanel.inputNeutros:setText(tostring(storageProfilesOutfit.espNeutros or 1755))
+outfitInterface.espPanel.espMasterSwitch:setOn(storageProfilesOutfit.espAtivo or false)
 
 local function addOutfitToGrid(id)
     local widget = UI.createWidget("TukuStudioWidget", outfitInterface.itemScrollPanel)
@@ -400,19 +405,29 @@ outfitInterface.espPanel.espMasterSwitch.onClick = function(widget)
     salvarConfigOutfit()
 end
 
+-- Callbacks corrigidos e isolados para evitar loops de escrita
 outfitInterface.espPanel.inputAmigos.onTextChange = function(widget, text)
-    storageProfilesOutfit.espAmigos = tonumber(text) or 1753
-    salvarConfigOutfit()
+    local n = tonumber(text)
+    if n then
+        storageProfilesOutfit.espAmigos = n
+        salvarConfigOutfit()
+    end
 end
 
 outfitInterface.espPanel.inputInimigos.onTextChange = function(widget, text)
-    storageProfilesOutfit.espInimigos = tonumber(text) or 1754
-    salvarConfigOutfit()
+    local n = tonumber(text)
+    if n then
+        storageProfilesOutfit.espInimigos = n
+        salvarConfigOutfit()
+    end
 end
 
 outfitInterface.espPanel.inputNeutros.onTextChange = function(widget, text)
-    storageProfilesOutfit.espNeutros = tonumber(text) or 1755
-    salvarConfigOutfit()
+    local n = tonumber(text)
+    if n then
+        storageProfilesOutfit.espNeutros = n
+        salvarConfigOutfit()
+    end
 end
 
 outfitInterface.closeButton.onClick = function()
@@ -463,13 +478,13 @@ outfitIcon.onMouseRelease = function(widget, mousePos, mouseButton)
 end
 
 -- ====================================================================
--- MOTOR TÁTICO UNIVERSAL PROTEGIDO (1ms)
+-- MOTOR CRASH-PROOF DE ATUALIZAÇÃO (1ms)
 -- ====================================================================
 macro(1, function()
     if not g_game.isOnline() then return end
     if not verificarLicenca() then return end
 
-    -- Trata do próprio Jogador
+    -- Próprio jogador
     if storageProfilesOutfit.ativo then
         local outfit = player:getOutfit()
         local desejadoId = tonumber(storageProfilesOutfit.atual.id) or 128
@@ -480,44 +495,43 @@ macro(1, function()
         end
     end
 
-    -- Trata do ESP de Outros Players com dupla proteção anti-crash
+    -- Outros players (ESP) com proteção total contra falhas estruturais
     if storageProfilesOutfit.espAtivo then
         local targetAmigos = tonumber(storageProfilesOutfit.espAmigos) or 1753
         local targetInimigos = tonumber(storageProfilesOutfit.espInimigos) or 1754
         local targetNeutros = tonumber(storageProfilesOutfit.espNeutros) or 1755
         
         local espectadores = g_game.getCreatures()
-        for _, spy in ipairs(espectadores) do
-            if spy and spy:isPlayer() and spy:getName() ~= player:getName() then
-                
-                -- pcall geral para blindar contra qualquer falta de função no client customizado
-                pcall(function()
-                    local sOutfit = spy:getOutfit()
-                    if sOutfit then
-                        local realTarget = targetNeutros
-                        local sName = spy:getName()
+        if espectadores then
+            for _, spy in ipairs(espectadores) do
+                if spy and spy:isPlayer() and spy:getName() ~= player:getName() then
+                    
+                    local status, _ = pcall(function()
+                        local sOutfit = spy:getOutfit()
+                        if sOutfit then
+                            local realTarget = targetNeutros
+                            local sName = spy:getName()
 
-                        -- Método 1: Tenta ler as listas de Friend/Enemy diretamente do módulo global do vBot
-                        if FriendList and type(FriendList) == "table" and FriendList[sName] then
-                            realTarget = targetAmigos
-                        elseif EnemyList and type(EnemyList) == "table" and EnemyList[sName] then
-                            realTarget = targetInimigos
-                        -- Método 2: Fallback caso o bot use funções nativas na criatura
-                        elseif spy.isFriend and spy:isFriend() then
-                            realTarget = targetAmigos
-                        elseif spy.isEnemy and spy:isEnemy() then
-                            realTarget = targetInimigos
-                        end
+                            -- Varredura tática robusta baseada em strings
+                            if FriendList and type(FriendList) == "table" and FriendList[sName] then
+                                realTarget = targetAmigos
+                            elseif EnemyList and type(EnemyList) == "table" and EnemyList[sName] then
+                                realTarget = targetInimigos
+                            elseif spy.isFriend and spy:isFriend() then
+                                realTarget = targetAmigos
+                            elseif spy.isEnemy and spy:isEnemy() then
+                                realTarget = targetInimigos
+                            end
 
-                        -- Força o visual localmente na tela do usuário
-                        if sOutfit.type ~= realTarget then
-                            sOutfit.type = realTarget
-                            sOutfit.addons = 3
-                            spy:setOutfit(sOutfit)
+                            if sOutfit.type ~= realTarget then
+                                sOutfit.type = realTarget
+                                sOutfit.addons = 3
+                                spy:setOutfit(sOutfit)
+                            end
                         end
-                    end
-                end)
-                
+                    end)
+
+                end
             end
         end
     end
