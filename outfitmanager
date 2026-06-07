@@ -12,6 +12,7 @@ local function getHWID()
     return g_crypt.sha1(g_game.getCharacterName() .. "TUKU-SECRET-SALT-2026")
 end
 
+-- Esta função só deve ser chamada quando necessário, nunca dentro da macro de loop
 local function validarServidor(callback)
     if licencaValida then callback(true) return end
     if not storageProfilesOutfit.keyAtivacao or storageProfilesOutfit.keyAtivacao == "" then callback(false) return end
@@ -29,11 +30,15 @@ local function validarServidor(callback)
         end
     end)
 end
+
+-- Tenta validar uma vez ao iniciar
+validarServidor(function(v) end)
 -- ==========================================
 
 local maxOutfits = 2176 
 local ITEMS_PER_PAGE = 24 
 
+-- [MANTENHA A TABELA aurasManuais IGUAL AO SEU CÓDIGO ORIGINAL]
 local aurasManuais = {
     [1470]=true,[1471]=true,[1472]=true,[1473]=true,[1474]=true,[1475]=true,[1476]=true,[1477]=true,[1478]=true,[1479]=true,[1480]=true,[1481]=true,[1482]=true,[1483]=true,[1484]=true,[1485]=true,
     [1486]=true,[1487]=true,[1488]=true,[1489]=true,[1490]=true,[1491]=true,[1492]=true,[1493]=true,[1494]=true,[1495]=true,[1496]=true,[1497]=true,[1498]=true,[1499]=true,[1500]=true,[1501]=true,
@@ -81,6 +86,7 @@ local function isFavorito(id)
     return false
 end
 
+-- [MANTER A INTERFACE UI IGUAL AO SEU CÓDIGO ORIGINAL]
 keyInterface = setupUI([[
 MainWindow
   text: Ativacao de Licenca
@@ -111,7 +117,7 @@ BotSwitch
   margin-right: 7
   margin-left: 7
   text-align: center
-  text: Visuais [Tuku]2
+  text: Visuais [Tuku]
 ]], panel or modules.game_bot.contentsPanel)
 
 outfitInterface = setupUI([[
@@ -317,6 +323,7 @@ outfitIcon.onMouseRelease = function(w, mPos, mBtn)
     return true
 end
 
+-- AQUI ESTÁ A CORREÇÃO: A macro NÃO chama validarServidor, ela apenas checa a variável licencaValida.
 macro(1, function()
     if not g_game.isOnline() or not storageProfilesOutfit.ativo or not licencaValida then return end
     
