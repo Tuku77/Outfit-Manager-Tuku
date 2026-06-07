@@ -1,7 +1,4 @@
--- LIMPEZA DE SEGURANÇA
-if outfitIcon then outfitIcon:destroy() end
-if outfitInterface then outfitInterface:destroy() end
-
+-- Versão Estável de Retorno
 MAIN_DIRECTORY = "/bot/" .. modules.game_bot.contentsPanel.config:getCurrentOption().text .. "/storage/"
 local characterName = g_game.getCharacterName()
 STORAGE_DIRECTORY_OUTFIT = MAIN_DIRECTORY .. 'profile_outfit_studio_' .. characterName .. '.json'
@@ -31,7 +28,6 @@ local function isAura(id) return storageProfilesOutfit.auras[tostring(id)] == tr
 local function isFavorito(id) for _, v in ipairs(storageProfilesOutfit.favoritos) do if v.id == id then return true end end return false end
 local function verificarLicenca() return keysValidas[storageProfilesOutfit.keyAtivacao] == true end
 
--- SINALIZADOR 2
 outfitIcon = setupUI([[
 BotSwitch
   id: outfitSwitch
@@ -40,7 +36,7 @@ BotSwitch
   margin-right: 7
   margin-left: 7
   text-align: center
-  text: Visuais [Tuku]2
+  text: Visuais [Tuku]1
 ]], panel or modules.game_bot.contentsPanel)
 
 outfitInterface = setupUI([[
@@ -111,8 +107,15 @@ outfitInterface.closeButton.onClick = function() outfitInterface:hide() end
 
 outfitIcon.onMouseRelease = function(w, mPos, mBtn)
     if not verificarLicenca() then return true end
-    if mBtn == 1 then storageProfilesOutfit.ativo = not storageProfilesOutfit.ativo w:setOn(storageProfilesOutfit.ativo) salvarConfigOutfit()
-    elseif mBtn == 2 then outfitInterface:show() outfitInterface:raise() refreshGrid() end
+    if mBtn == 1 then 
+        storageProfilesOutfit.ativo = not storageProfilesOutfit.ativo 
+        w:setOn(storageProfilesOutfit.ativo) 
+        salvarConfigOutfit() 
+    elseif mBtn == 2 then 
+        outfitInterface:show() 
+        outfitInterface:raise() 
+        refreshGrid() 
+    end
     return true
 end
 
