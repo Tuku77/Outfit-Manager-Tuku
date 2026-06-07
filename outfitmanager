@@ -93,7 +93,7 @@ BotSwitch
   text: Visuais [Tuku]
 ]], panel or modules.game_bot.contentsPanel)
 
--- Interface Principal Estabilizada
+-- Interface Principal Nativa Super Limpa (Sem sub-paineis complexos)
 outfitInterface = setupUI([[
 MainWindow
   text: OUTFIT STUDIO // TUKU
@@ -154,65 +154,63 @@ MainWindow
     step: 60
     pixels-scroll: true
 
-  Panel
-    id: espPanel
+  -- CONTEUDO DA ABA ESP INJETADO DIRETO NA JANELA MAE COM ANCHORS FIXOS
+  CheckBox
+    id: espMasterSwitch
+    text: Ativar Troca de Outfit nos Outros
+    anchors.top: tabGallery.bottom
     anchors.left: parent.left
     anchors.right: parent.right
-    anchors.top: tabGallery.bottom
-    anchors.bottom: separator.top
-    margin-top: 12
-    margin-bottom: 12
+    margin-top: 25
     visible: false
 
-    BotSwitch
-      id: espMasterSwitch
-      text: Ativar Troca de Outfit nos Outros
-      anchors.top: parent.top
-      anchors.left: parent.left
-      anchors.right: parent.right
-      height: 22
+  Label
+    id: lblAmigos
+    text: ID Outfit - Amigos (Friend List):
+    anchors.top: espMasterSwitch.bottom
+    anchors.left: parent.left
+    margin-top: 25
+    visible: false
 
-    Label
-      id: lblAmigos
-      text: ID Outfit - Amigos (Friend List):
-      anchors.top: espMasterSwitch.bottom
-      anchors.left: parent.left
-      margin-top: 20
+  TextEdit
+    id: inputAmigos
+    anchors.top: espMasterSwitch.bottom
+    anchors.right: parent.right
+    width: 120
+    margin-top: 21
+    visible: false
 
-    TextEdit
-      id: inputAmigos
-      anchors.top: espMasterSwitch.bottom
-      anchors.right: parent.right
-      width: 100
-      margin-top: 16
+  Label
+    id: lblInimigos
+    text: ID Outfit - Inimigos (Enemy List):
+    anchors.top: inputAmigos.bottom
+    anchors.left: parent.left
+    margin-top: 20
+    visible: false
 
-    Label
-      id: lblInimigos
-      text: ID Outfit - Inimigos (Enemy List):
-      anchors.top: inputAmigos.bottom
-      anchors.left: parent.left
-      margin-top: 15
+  TextEdit
+    id: inputInimigos
+    anchors.top: inputAmigos.bottom
+    anchors.right: parent.right
+    width: 120
+    margin-top: 16
+    visible: false
 
-    TextEdit
-      id: inputInimigos
-      anchors.top: inputAmigos.bottom
-      anchors.right: parent.right
-      width: 100
-      margin-top: 11
+  Label
+    id: lblNeutros
+    text: ID Outfit - Neutros / Outros:
+    anchors.top: inputInimigos.bottom
+    anchors.left: parent.left
+    margin-top: 20
+    visible: false
 
-    Label
-      id: lblNeutros
-      text: ID Outfit - Neutros / Outros:
-      anchors.top: inputInimigos.bottom
-      anchors.left: parent.left
-      margin-top: 15
-
-    TextEdit
-      id: inputNeutros
-      anchors.top: inputInimigos.bottom
-      anchors.right: parent.right
-      width: 100
-      margin-top: 11
+  TextEdit
+    id: inputNeutros
+    anchors.top: inputInimigos.bottom
+    anchors.right: parent.right
+    width: 120
+    margin-top: 16
+    visible: false
 
   HorizontalSeparator
     id: separator
@@ -286,11 +284,11 @@ TukuStudioWidget < UIWidget
 local mode = "gallery"
 local maxOutfits = 2176
 
--- Força valores iniciais seguros
-outfitInterface.espPanel.inputAmigos:setText(tostring(storageProfilesOutfit.espAmigos or 1753))
-outfitInterface.espPanel.inputInimigos:setText(tostring(storageProfilesOutfit.espInimigos or 1754))
-outfitInterface.espPanel.inputNeutros:setText(tostring(storageProfilesOutfit.espNeutros or 1755))
-outfitInterface.espPanel.espMasterSwitch:setOn(storageProfilesOutfit.espAtivo or false)
+-- Inicializa os valores de texto de forma segura
+outfitInterface.inputAmigos:setText(tostring(storageProfilesOutfit.espAmigos or 1753))
+outfitInterface.inputInimigos:setText(tostring(storageProfilesOutfit.espInimigos or 1754))
+outfitInterface.inputNeutros:setText(tostring(storageProfilesOutfit.espNeutros or 1755))
+outfitInterface:getChildById('espMasterSwitch'):setChecked(storageProfilesOutfit.espAtivo or false)
 
 local function addOutfitToGrid(id)
     local widget = UI.createWidget("TukuStudioWidget", outfitInterface.itemScrollPanel)
@@ -376,58 +374,68 @@ function refreshGrid()
     end
 end
 
+-- Gerenciador Alternador de Visibilidade Pura (Garante estabilidade visual)
+local function alternarAbasVisuais(exibirEsp)
+    if exibirEsp then
+        outfitInterface.itemScrollPanel:hide()
+        outfitInterface.mainScrollBar:hide()
+        
+        outfitInterface.espMasterSwitch:show()
+        outfitInterface.lblAmigos:show()
+        outfitInterface.inputAmigos:show()
+        outfitInterface.lblInimigos:show()
+        outfitInterface.inputInimigos:show()
+        outfitInterface.lblNeutros:show()
+        outfitInterface.inputNeutros:show()
+    else
+        outfitInterface.espMasterSwitch:hide()
+        outfitInterface.lblAmigos:hide()
+        outfitInterface.inputAmigos:hide()
+        outfitInterface.lblInimigos:hide()
+        outfitInterface.inputInimigos:hide()
+        outfitInterface.lblNeutros:hide()
+        outfitInterface.inputNeutros:hide()
+        
+        outfitInterface.itemScrollPanel:show()
+        outfitInterface.mainScrollBar:show()
+    end
+end
+
 outfitInterface.tabGallery.onClick = function()
     mode = "gallery"
-    outfitInterface.espPanel:hide()
-    outfitInterface.itemScrollPanel:show()
-    outfitInterface.mainScrollBar:show()
+    alternarAbasVisuais(false)
     refreshGrid()
 end
 
 outfitInterface.tabFavs.onClick = function()
     mode = "favs"
-    outfitInterface.espPanel:hide()
-    outfitInterface.itemScrollPanel:show()
-    outfitInterface.mainScrollBar:show()
+    alternarAbasVisuais(false)
     refreshGrid()
 end
 
 outfitInterface.tabEsp.onClick = function()
     mode = "esp"
-    outfitInterface.itemScrollPanel:hide()
-    outfitInterface.mainScrollBar:hide()
-    outfitInterface.espPanel:show()
+    alternarAbasVisuais(true)
 end
 
-outfitInterface.espPanel.espMasterSwitch.onClick = function(widget)
-    storageProfilesOutfit.espAtivo = not storageProfilesOutfit.espAtivo
-    widget:setOn(storageProfilesOutfit.espAtivo)
+outfitInterface.espMasterSwitch.onCheckChange = function(widget, checked)
+    storageProfilesOutfit.espAtivo = checked
     salvarConfigOutfit()
 end
 
--- Callbacks corrigidos e isolados para evitar loops de escrita
-outfitInterface.espPanel.inputAmigos.onTextChange = function(widget, text)
+outfitInterface.inputAmigos.onTextChange = function(widget, text)
     local n = tonumber(text)
-    if n then
-        storageProfilesOutfit.espAmigos = n
-        salvarConfigOutfit()
-    end
+    if n then storageProfilesOutfit.espAmigos = n salvarConfigOutfit() end
 end
 
-outfitInterface.espPanel.inputInimigos.onTextChange = function(widget, text)
+outfitInterface.inputInimigos.onTextChange = function(widget, text)
     local n = tonumber(text)
-    if n then
-        storageProfilesOutfit.espInimigos = n
-        salvarConfigOutfit()
-    end
+    if n then storageProfilesOutfit.espInimigos = n salvarConfigOutfit() end
 end
 
-outfitInterface.espPanel.inputNeutros.onTextChange = function(widget, text)
+outfitInterface.inputNeutros.onTextChange = function(widget, text)
     local n = tonumber(text)
-    if n then
-        storageProfilesOutfit.espNeutros = n
-        salvarConfigOutfit()
-    end
+    if n then storageProfilesOutfit.espNeutros = n salvarConfigOutfit() end
 end
 
 outfitInterface.closeButton.onClick = function()
@@ -443,7 +451,7 @@ keyInterface.btnAtivar.onClick = function()
         outfitInterface:show()
         outfitInterface:raise()
         outfitInterface:focus()
-        refreshGrid()
+        if mode ~= "esp" then refreshGrid() end
     else
         modules.game_textmessage.displayFailureMessage("[ERRO] Chave Invalida")
     end
@@ -472,7 +480,7 @@ outfitIcon.onMouseRelease = function(widget, mousePos, mouseButton)
         outfitInterface:show()
         outfitInterface:raise()
         outfitInterface:focus()
-        refreshGrid()
+        if mode ~= "esp" then refreshGrid() end
     end
     return true
 end
@@ -484,7 +492,6 @@ macro(1, function()
     if not g_game.isOnline() then return end
     if not verificarLicenca() then return end
 
-    -- Próprio jogador
     if storageProfilesOutfit.ativo then
         local outfit = player:getOutfit()
         local desejadoId = tonumber(storageProfilesOutfit.atual.id) or 128
@@ -495,7 +502,6 @@ macro(1, function()
         end
     end
 
-    -- Outros players (ESP) com proteção total contra falhas estruturais
     if storageProfilesOutfit.espAtivo then
         local targetAmigos = tonumber(storageProfilesOutfit.espAmigos) or 1753
         local targetInimigos = tonumber(storageProfilesOutfit.espInimigos) or 1754
@@ -506,13 +512,12 @@ macro(1, function()
             for _, spy in ipairs(espectadores) do
                 if spy and spy:isPlayer() and spy:getName() ~= player:getName() then
                     
-                    local status, _ = pcall(function()
+                    pcall(function()
                         local sOutfit = spy:getOutfit()
                         if sOutfit then
                             local realTarget = targetNeutros
                             local sName = spy:getName()
 
-                            -- Varredura tática robusta baseada em strings
                             if FriendList and type(FriendList) == "table" and FriendList[sName] then
                                 realTarget = targetAmigos
                             elseif EnemyList and type(EnemyList) == "table" and EnemyList[sName] then
@@ -550,5 +555,5 @@ macro(500, function()
 end)
 
 if verificarLicenca() then
-    refreshGrid()
+    if mode ~= "esp" then refreshGrid() end
 end
