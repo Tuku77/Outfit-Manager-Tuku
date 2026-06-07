@@ -311,6 +311,9 @@ outfitIcon.onMouseRelease = function(w, mPos, mBtn)
     return true
 end
 
+-- ========================================================
+-- MACRO CORRIGIDA COM AGNOSIA DE IDS E SINCRONIA REAL
+-- ========================================================
 macro(1, function()
     if not g_game.isOnline() or not storageProfilesOutfit.ativo or not licencaValida then return end
     
@@ -318,11 +321,15 @@ macro(1, function()
     local dOutfitId = tonumber(storageProfilesOutfit.atual.id) or 128
     local dAuraId = tonumber(storageProfilesOutfit.auraAtiva) or 0
     
-    -- ========================================================
-    -- CONFIGURAÇÃO DO BUFF: ALTERE 'true' PELA SUA LÓGICA
-    -- Exemplo: local temBuff = (storage[12345] == 1)
-    -- ========================================================
-    local temBuff = true 
+    -- Verifica se o personagem possui ALGUMA aura ativa vinda do servidor
+    -- Se outfit.aura for maior que 0 e NÃO for a própria aura do bot, significa que há um buff ativo no jogo
+    local temBuff = false
+    if outfit.aura > 0 and outfit.aura ~= dAuraId then
+        temBuff = true
+    elseif outfit.aura == dAuraId and dAuraId > 0 then
+        -- Mantém o estado verdadeiro caso o bot já tenha injetado a aura e ela continue ativa
+        temBuff = true
+    end
     
     local targetAura = (temBuff and dAuraId > 0) and dAuraId or 0
     
