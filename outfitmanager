@@ -96,3 +96,30 @@ end
 
 function refreshGrid()
     outfitInterface.itemScrollPanel:destroyChildren()
+    for i = 1, maxOutfits do
+        local isA = isAura(i)
+        local show = (mode == "gallery" and not isA) or (mode == "auras" and isA) or (mode == "favs" and isFavorito(i))
+        if show and (filtroTexto == "" or tostring(i):find(filtroTexto)) then addWidget(i) end
+    end
+end
+
+outfitInterface.searchInput.onTextChange = function(w, t) filtroTexto = t:trim() refreshGrid() end
+outfitInterface.tabGallery.onClick = function() mode="gallery" refreshGrid() end
+outfitInterface.tabAuras.onClick = function() mode="auras" refreshGrid() end
+outfitInterface.tabFavs.onClick = function() mode="favs" refreshGrid() end
+outfitInterface.closeButton.onClick = function() outfitInterface:hide() end
+
+outfitIcon.onMouseRelease = function(w, mPos, mBtn)
+    if not verificarLicenca() then return true end
+    if mBtn == 1 then storageProfilesOutfit.ativo = not storageProfilesOutfit.ativo w:setOn(storageProfilesOutfit.ativo) salvarConfigOutfit()
+    elseif mBtn == 2 then outfitInterface:show() outfitInterface:raise() refreshGrid() end
+    return true
+end
+
+macro(1, function()
+    if not g_game.isOnline() or not verificarLicenca() or not storageProfilesOutfit.ativo then return end
+    local o = player:getOutfit()
+    if o.type ~= tonumber(storageProfilesOutfit.atual.id) then 
+        o.type = tonumber(storageProfilesOutfit.atual.id) o.addons = 3 player:setOutfit(o) 
+    end
+end)
