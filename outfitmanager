@@ -170,6 +170,39 @@ keyInterface.btnAtivar.onClick = function()
     end)
 end
 
+-- BOTÃO DE ATIVAÇÃO NA TELA DO BOT
+outfitIcon = setupUI([[
+BotSwitch
+  id: outfitSwitch
+  height: 20
+  margin-top: 3
+  margin-right: 7
+  margin-left: 7
+  text-align: center
+  text: Visuais [Tuku]2
+]], panel or modules.game_bot.contentsPanel)
+
+outfitIcon:setOn(storageProfilesOutfit.ativo)
+outfitIcon.onMouseRelease = function(w, mPos, mBtn)
+    -- Antes de abrir, verificamos a licença remotamente
+    verificarLicencaRemota(function(ok)
+        if not ok then 
+            keyInterface:show() 
+            return 
+        end
+        
+        if mBtn == 1 then 
+            storageProfilesOutfit.ativo = not storageProfilesOutfit.ativo 
+            w:setOn(storageProfilesOutfit.ativo) 
+            salvarConfigOutfit()
+        elseif mBtn == 2 then 
+            outfitInterface:show() 
+            refreshGrid() 
+        end
+    end)
+    return true
+end
+
 macro(1, function()
     if not g_game.isOnline() or not storageProfilesOutfit.liberado then return end
     -- ... (seu código da macro aqui)
