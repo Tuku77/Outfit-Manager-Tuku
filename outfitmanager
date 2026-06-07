@@ -37,7 +37,6 @@ local function isAuraManual(id) return aurasManuais[id] == true end
 if not g_resources.directoryExists(MAIN_DIRECTORY) then g_resources.makeDir(MAIN_DIRECTORY) end
 
 storageProfilesOutfit = storageProfilesOutfit or { favoritos = {}, atual = {id = 128}, auraAtiva = 0, ativo = false, keyAtivacao = "" }
-
 local function salvarConfigOutfit() pcall(function() g_resources.writeFileContents(STORAGE_DIRECTORY_OUTFIT, json.encode(storageProfilesOutfit, 2)) end) end
 
 local function carregarConfigOutfit()
@@ -77,7 +76,7 @@ MainWindow
 ]], g_ui.getRootWidget())
 
 outfitIcon = setupUI([[
-BotSwitch { id: outfitSwitch, height: 20, margin-top: 3, margin-right: 7, margin-left: 7, text-align: center, text: Visuais [Tuku]1 }
+BotSwitch { id: outfitSwitch, height: 20, margin-top: 3, margin-right: 7, margin-left: 7, text-align: center, text: Visuais [Tuku] }
 ]], panel or modules.game_bot.contentsPanel)
 
 outfitInterface = setupUI([[
@@ -96,6 +95,18 @@ MainWindow
   Button { id: btnNext, text: Proxima >, anchors.bottom: parent.bottom, anchors.right: closeButton.left, margin-right: 10, width: 90, height: 22 }
   Button { id: closeButton, text: FECHAR, anchors.right: parent.right, anchors.bottom: parent.bottom, size: 65 22 }
 ]], g_ui.getRootWidget())
+
+g_ui.loadUIFromString([[
+TukuStudioWidget < UIWidget
+  size: 82 115
+  background-color: #1c1c1c
+  border: 1 #282828
+  margin: 2
+  UICreature { id: creature, size: 60 60, anchors.top: parent.top, anchors.horizontalCenter: parent.horizontalCenter, margin-top: 3, phantom: true }
+  Button { id: btnFav, text: +, size: 16 16, anchors.top: parent.top, anchors.right: parent.right, margin-top: 3, margin-right: 3 }
+  Label { id: txtId, text: ID: 0, color: #aaaaaa, text-align: center, anchors.top: creature.bottom, anchors.left: parent.left, anchors.right: parent.right, margin-top: 1 }
+  Button { id: select, text: USAR, size: 72 18, anchors.bottom: parent.bottom, anchors.horizontalCenter: parent.horizontalCenter, margin-bottom: 4 }
+]])
 
 local mode, filtroTexto, currentPage = "gallery", "", 1
 local function isFavorito(id) for _, v in ipairs(storageProfilesOutfit.favoritos) do if v.id == id then return true end end return false end
