@@ -105,7 +105,7 @@ BotSwitch
   margin-right: 7
   margin-left: 7
   text-align: center
-  text: Visuais [Tuku]
+  text: Visuais [Tuku]1
 ]], panel or modules.game_bot.contentsPanel)
 
 outfitInterface = setupUI([[
