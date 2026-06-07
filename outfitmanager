@@ -31,12 +31,13 @@ local function isAura(id) return storageProfilesOutfit.auras[tostring(id)] == tr
 local function isFavorito(id) for _, v in ipairs(storageProfilesOutfit.favoritos) do if v.id == id then return true end end return false end
 local function verificarLicenca() return keysValidas[storageProfilesOutfit.keyAtivacao] == true end
 
+-- SINALIZADOR ALTERADO PARA 1
 outfitIcon = setupUI([[
 BotSwitch
   height: 20
   margin: 3
   text-align: center
-  text: Visuais [Tuku]2
+  text: Visuais [Tuku]1
 ]], modules.game_bot.contentsPanel)
 
 outfitInterface = setupUI([[
