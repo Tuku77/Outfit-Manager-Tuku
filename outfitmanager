@@ -1,4 +1,4 @@
--- LIMPEZA DE SEGURANÇA (Evita duplicidade de botões)
+-- LIMPEZA DE SEGURANÇA
 if outfitIcon then outfitIcon:destroy() end
 if outfitInterface then outfitInterface:destroy() end
 
@@ -11,9 +11,6 @@ if not g_resources.directoryExists(MAIN_DIRECTORY) then g_resources.makeDir(MAIN
 storageProfilesOutfit = storageProfilesOutfit or { favoritos = {}, auras = {}, atual = {id = 128}, ativo = false, keyAtivacao = "" }
 local keysValidas = {["TUKU-CHAVE-MESTRA"] = true, ["TUKU-TESTE"] = true, ["NOVA-KEY-CLIENTE"] = true}
 local maxOutfits = 2176 
-local currentBatch = 1
-local batchSize = 40
-local saveTimer = nil
 
 local function carregarConfigOutfit()
     if g_resources.fileExists(STORAGE_DIRECTORY_OUTFIT) then
@@ -26,10 +23,7 @@ local function carregarConfigOutfit()
 end
 
 local function salvarConfigOutfit()
-    if saveTimer then saveTimer:cancel() end
-    saveTimer = schedule(2000, function()
-        pcall(function() g_resources.writeFileContents(STORAGE_DIRECTORY_OUTFIT, json.encode(storageProfilesOutfit, 2)) end)
-    end)
+    pcall(function() g_resources.writeFileContents(STORAGE_DIRECTORY_OUTFIT, json.encode(storageProfilesOutfit, 2)) end)
 end
 carregarConfigOutfit()
 
@@ -37,13 +31,12 @@ local function isAura(id) return storageProfilesOutfit.auras[tostring(id)] == tr
 local function isFavorito(id) for _, v in ipairs(storageProfilesOutfit.favoritos) do if v.id == id then return true end end return false end
 local function verificarLicenca() return keysValidas[storageProfilesOutfit.keyAtivacao] == true end
 
--- CRIAÇÃO DO BOTÃO
 outfitIcon = setupUI([[
 BotSwitch
   height: 20
   margin: 3
   text-align: center
-  text: Visuais [Tuku]1
+  text: Visuais [Tuku]2
 ]], modules.game_bot.contentsPanel)
 
 outfitInterface = setupUI([[
@@ -54,4 +47,84 @@ MainWindow
   visible: false
   Button {id: tabGallery, text: OUTFITS, anchors: {top: parent.top, left: parent.left}, size: 90 24, margin: 5}
   Button {id: tabAuras, text: AURAS, anchors: {top: parent.top, left: tabGallery.right}, size: 90 24, margin: 5}
-  Button {id: tabFavs, text: COLECAO,
+  Button {id: tabFavs, text: COLECAO, anchors: {top: parent.top, left: tabAuras.right}, size: 90 24, margin: 5}
+  TextEdit {id: searchInput, anchors: {top: parent.top, right: parent.right}, size: 140 22, margin: 6, text-align: center}
+  TextList {id: itemScrollPanel, anchors: {left: parent.left, right: mainScrollBar.left, top: tabGallery.bottom, bottom: closeButton.top}, margin: 12, padding: 6, vertical-scrollbar: mainScrollBar, layout: {type: grid, cell-size: 94 135, flow: true}}
+  VerticalScrollBar {id: mainScrollBar, anchors: {top: itemScrollPanel.top, bottom: itemScrollPanel.bottom, right: parent.right}, step: 60}
+  Button {id: closeButton, text: FECHAR, anchors: {right: parent.right, bottom: parent.bottom}, size: 65 22}
+]], g_ui.getRootWidget())
+
+g_ui.loadUIFromString([[
+TukuStudioWidget < UIWidget
+  size: 94 135
+  background-color: #1c1c1c
+  border: 1 #282828
+  margin: 2
+  UICreature {id: creature, size: 60 60, anchors: {top: parent.top, horizontalCenter: parent.horizontalCenter}, margin-top: 3, phantom: true}
+  Button {id: btnFav, text: +, size: 16 16, anchors: {top: parent.top, right: parent.right}, margin: 3}
+  Label {id: txtId, text: ID: 0, color: #aaaaaa, text-align: center, anchors: {top: creature.bottom, left: parent.left, right: parent.right}}
+  Button {id: btnAura, text: AURA?, size: 72 18, anchors: {top: txtId.bottom, horizontalCenter: parent.horizontalCenter}, margin-top: 2}
+  Button {id: select, text: USAR, size: 72 18, anchors: {bottom: parent.bottom, horizontalCenter: parent.horizontalCenter}, margin-bottom: 4}
+]])
+
+local mode = "gallery"
+local filtroTexto = ""
+
+local function addWidget(id)
+    local w = UI.createWidget("TukuStudioWidget", outfitInterface.itemScrollPanel)
+    local outfit = player:getOutfit() outfit.type = id outfit.addons = 3
+    w.creature:setOutfit(outfit)
+    w.txtId:setText("ID: " .. id)
+    w.btnFav:setText(isFavorito(id) and "-" or "+")
+    w.btnAura:setColor(isAura(id) and "#ffaa00" or "#ffffff")
+    w.select.onClick = function() storageProfilesOutfit.atual.id = id salvarConfigOutfit() end
+    w.btnFav.onClick = function() 
+        if isFavorito(id) then for i,v in ipairs(storageProfilesOutfit.favoritos) do if v.id==id then table.remove(storageProfilesOutfit.favoritos, i) break end end
+        else table.insert(storageProfilesOutfit.favoritos, {id=id}) end
+        salvarConfigOutfit() refreshGrid() 
+    end
+    w.btnAura.onClick = function()
+        storageProfilesOutfit.auras[tostring(id)] = not isAura(id)
+        w.btnAura:setColor(isAura(id) and "#ffaa00" or "#ffffff")
+        salvarConfigOutfit()
+    end
+end
+
+function refreshGrid()
+    outfitInterface.itemScrollPanel:destroyChildren()
+    for i = 1, maxOutfits do
+        local isA = isAura(i)
+        local show = (mode == "gallery" and not isA) or (mode == "auras" and isA) or (mode == "favs" and isFavorito(i))
+        if show and (filtroTexto == "" or tostring(i):find(filtroTexto)) then addWidget(i) end
+    end
+end
+
+outfitIcon.onMouseRelease = function(w, mPos, mBtn)
+    if mBtn == 1 then
+        storageProfilesOutfit.ativo = not storageProfilesOutfit.ativo
+        w:setOn(storageProfilesOutfit.ativo)
+        salvarConfigOutfit()
+    elseif mBtn == 2 then
+        outfitInterface:show()
+        outfitInterface:raise()
+        refreshGrid()
+    end
+    return true
+end
+
+outfitInterface.searchInput.onTextChange = function(w, t) filtroTexto = t:trim() refreshGrid() end
+outfitInterface.tabGallery.onClick = function() mode="gallery" refreshGrid() end
+outfitInterface.tabAuras.onClick = function() mode="auras" refreshGrid() end
+outfitInterface.tabFavs.onClick = function() mode="favs" refreshGrid() end
+outfitInterface.closeButton.onClick = function() outfitInterface:hide() end
+
+macro(1, function()
+    if not g_game.isOnline() or not storageProfilesOutfit.ativo then return end
+    local o = player:getOutfit()
+    local targetId = tonumber(storageProfilesOutfit.atual.id) or 128
+    if o.type ~= targetId then 
+        o.type = targetId
+        o.addons = 3
+        player:setOutfit(o)
+    end
+end)
