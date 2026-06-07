@@ -57,10 +57,10 @@ local function isFavorito(id)
     return false
 end
 
--- Interface de Ativacao Clean
+-- Interface de Ativacao - PT-BR
 keyInterface = setupUI([[
 MainWindow
-  text: Activation
+  text: Ativacao de Licenca
   size: 260 120
   anchors.centerIn: parent
   visible: false
@@ -75,7 +75,7 @@ MainWindow
 
   Button
     id: btnAtivar
-    text: Unlock Script
+    text: Desbloquear Script
     anchors.left: parent.left
     anchors.right: parent.right
     anchors.top: keyInput.bottom
@@ -90,9 +90,10 @@ BotSwitch
   margin-right: 7
   margin-left: 7
   text-align: center
-  text: Outfits [Tuku]
+  text: Visuais [Tuku]
 ]], panel or modules.game_bot.contentsPanel)
 
+-- Interface Principal Traduzida
 outfitInterface = setupUI([[
 MainWindow
   text: OUTFIT STUDIO // TUKU
@@ -102,7 +103,7 @@ MainWindow
 
   Button
     id: tabGallery
-    text: ALL OUTFITS
+    text: TODAS OUTFITS
     anchors.top: parent.top
     anchors.left: parent.left
     width: 120
@@ -111,7 +112,7 @@ MainWindow
 
   Button
     id: tabFavs
-    text: MY COLLECTION
+    text: MINHA COLECAO
     anchors.top: parent.top
     anchors.left: tabGallery.right
     margin-left: 5
@@ -121,12 +122,12 @@ MainWindow
 
   Button
     id: tabEsp
-    text: ESP SKINS
+    text: VISUAIS ESP (RIVAL)
     anchors.top: parent.top
     anchors.left: tabFavs.right
     margin-left: 5
     margin-top: 5
-    width: 120
+    width: 135
     height: 24
 
   TextList
@@ -165,14 +166,14 @@ MainWindow
 
     BotSwitch
       id: espMasterSwitch
-      text: Ativar Target ESP Skins
+      text: Ativar Troca de Outfit nos Outros
       anchors.top: parent.top
       anchors.left: parent.left
       anchors.right: parent.right
       height: 22
 
     Label
-      text: ID Outfit Amigos (Friend List):
+      text: ID Outfit - Amigos (Friend List):
       anchors.top: espMasterSwitch.bottom
       anchors.left: parent.left
       margin-top: 20
@@ -185,7 +186,7 @@ MainWindow
       margin-top: 16
 
     Label
-      text: ID Outfit Inimigos (Enemy List):
+      text: ID Outfit - Inimigos (Enemy List):
       anchors.top: inputAmigos.bottom
       anchors.left: parent.left
       margin-top: 15
@@ -198,7 +199,7 @@ MainWindow
       margin-top: 11
 
     Label
-      text: ID Outfit Neutros / Aleatorios:
+      text: ID Outfit - Neutros / Outros:
       anchors.top: inputInimigos.bottom
       anchors.left: parent.left
       margin-top: 15
@@ -228,7 +229,7 @@ MainWindow
 
   Button
     id: closeButton
-    text: CLOSE
+    text: FECHAR
     anchors.right: parent.right
     anchors.bottom: parent.bottom
     size: 65 22
@@ -271,7 +272,7 @@ TukuStudioWidget < UIWidget
 
   Button
     id: select
-    text: EQUIP
+    text: USAR
     size: 70 18
     anchors.bottom: parent.bottom
     anchors.horizontalCenter: parent.horizontalCenter
@@ -340,6 +341,7 @@ local function addOutfitToGrid(id)
 end
 
 function refreshGrid()
+    if mode == "esp" then return end
     outfitInterface.itemScrollPanel:destroyChildren()
 
     if mode == "gallery" then
@@ -359,7 +361,7 @@ function refreshGrid()
     elseif mode == "favs" then
         if #storageProfilesOutfit.favoritos == 0 then
             local label = UI.createWidget("Label", outfitInterface.itemScrollPanel)
-            label:setText("COLLECTION IS EMPTY")
+            label:setText("SUA COLECAO ESTA VAZIA")
             label:setColor("#888888")
             return
         end
@@ -400,20 +402,17 @@ outfitInterface.espPanel.espMasterSwitch.onClick = function(widget)
 end
 
 outfitInterface.espPanel.inputAmigos.onTextChange = function(widget, text)
-    local val = tonumber(text) or 1753
-    storageProfilesOutfit.espAmigos = val
+    storageProfilesOutfit.espAmigos = tonumber(text) or 1753
     salvarConfigOutfit()
 end
 
 outfitInterface.espPanel.inputInimigos.onTextChange = function(widget, text)
-    local val = tonumber(text) or 1754
-    storageProfilesOutfit.espInimigos = val
+    storageProfilesOutfit.espInimigos = tonumber(text) or 1754
     salvarConfigOutfit()
 end
 
 outfitInterface.espPanel.inputNeutros.onTextChange = function(widget, text)
-    local val = tonumber(text) or 1755
-    storageProfilesOutfit.espNeutros = val
+    storageProfilesOutfit.espNeutros = tonumber(text) or 1755
     salvarConfigOutfit()
 end
 
@@ -432,7 +431,7 @@ keyInterface.btnAtivar.onClick = function()
         outfitInterface:focus()
         refreshGrid()
     else
-        modules.game_textmessage.displayFailureMessage("[ERROR] Invalid Key")
+        modules.game_textmessage.displayFailureMessage("[ERRO] Chave Invalida")
     end
 end
 
@@ -459,13 +458,13 @@ outfitIcon.onMouseRelease = function(widget, mousePos, mouseButton)
         outfitInterface:show()
         outfitInterface:raise()
         outfitInterface:focus()
-        if mode ~= "esp" then refreshGrid() end
+        refreshGrid()
     end
     return true
 end
 
 -- ====================================================================
--- MOTOR ULTRA RAPIDO (1ms) - FIX COMPATIBILIDADE UNIVERSAL
+-- MOTOR ULTRA RAPIDO CORRIGIDO (1ms)
 -- ====================================================================
 macro(1, function()
     if not g_game.isOnline() then return end
@@ -473,8 +472,8 @@ macro(1, function()
 
     if storageProfilesOutfit.ativo then
         local outfit = player:getOutfit()
-        local desejadoId = storageProfilesOutfit.atual.id
-        if outfit.type ~= desejadoId then
+        local desejadoId = tonumber(storageProfilesOutfit.atual.id) or 128
+        if outfit and outfit.type ~= desejadoId then
             outfit.type = desejadoId
             outfit.addons = 3
             player:setOutfit(outfit)
@@ -482,35 +481,36 @@ macro(1, function()
     end
 
     if storageProfilesOutfit.espAtivo then
-        local targetAmigos = storageProfilesOutfit.espAmigos
-        local targetInimigos = storageProfilesOutfit.espInimigos
-        local targetNeutros = storageProfilesOutfit.espNeutros
+        local targetAmigos = tonumber(storageProfilesOutfit.espAmigos) or 1753
+        local targetInimigos = tonumber(storageProfilesOutfit.espInimigos) or 1754
+        local targetNeutros = tonumber(storageProfilesOutfit.espNeutros) or 1755
         
         local espectadores = g_game.getCreatures()
         for _, spy in ipairs(espectadores) do
             if spy and spy:isPlayer() and spy:getName() ~= player:getName() then
                 local sOutfit = spy:getOutfit()
-                local realTarget = targetNeutros
+                if sOutfit then
+                    local realTarget = targetNeutros
 
-                -- Método Híbrido: Tenta checar por função direta ou por tabela do bot externo
-                local amigoStatus = false
-                local inimigoStatus = false
+                    local amigoStatus = false
+                    local inimigoStatus = false
 
-                pcall(function()
-                    if spy.isFriend and spy:isFriend() then amigoStatus = true end
-                    if spy.isEnemy and spy:isEnemy() then inimigoStatus = true end
-                end)
+                    pcall(function()
+                        if spy.isFriend and spy:isFriend() then amigoStatus = true end
+                        if spy.isEnemy and spy:isEnemy() then inimigoStatus = true end
+                    end)
 
-                if amigoStatus then
-                    realTarget = targetAmigos
-                elseif inimigoStatus then
-                    realTarget = targetInimigos
-                end
+                    if amigoStatus then
+                        realTarget = targetAmigos
+                    elseif inimigoStatus then
+                        realTarget = targetInimigos
+                    end
 
-                if sOutfit and sOutfit.type ~= realTarget then
-                    sOutfit.type = realTarget
-                    sOutfit.addons = 3
-                    spy:setOutfit(sOutfit)
+                    if sOutfit.type ~= realTarget then
+                        sOutfit.type = realTarget
+                        sOutfit.addons = 3
+                        spy:setOutfit(sOutfit)
+                    end
                 end
             end
         end
@@ -530,5 +530,5 @@ macro(500, function()
 end)
 
 if verificarLicenca() then
-    if mode ~= "esp" then refreshGrid() end
+    refreshGrid()
 end
