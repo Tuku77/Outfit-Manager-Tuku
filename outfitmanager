@@ -2,19 +2,13 @@ MAIN_DIRECTORY = "/bot/" .. modules.game_bot.contentsPanel.config:getCurrentOpti
 local characterName = g_game.getCharacterName()
 STORAGE_DIRECTORY_OUTFIT = MAIN_DIRECTORY .. 'profile_outfit_studio_' .. characterName .. '.json'
 
--- Configuração inicial
 if not g_resources.directoryExists(MAIN_DIRECTORY) then g_resources.makeDir(MAIN_DIRECTORY) end
 
-storageProfilesOutfit = storageProfilesOutfit or {
-    favoritos = {},
-    auras = {}, -- Tabela que vai guardar seus IDs de auras aprendidos
-    atual = {id = 128},
-    ativo = false,
-    keyAtivacao = ""
-}
-
+storageProfilesOutfit = storageProfilesOutfit or { favoritos = {}, auras = {}, atual = {id = 128}, ativo = false, keyAtivacao = "" }
 local keysValidas = {["TUKU-CHAVE-MESTRA"] = true, ["TUKU-TESTE"] = true, ["NOVA-KEY-CLIENTE"] = true}
 local maxOutfits = 2176 
+local currentBatch = 1
+local batchSize = 40
 
 local function carregarConfigOutfit()
     if g_resources.fileExists(STORAGE_DIRECTORY_OUTFIT) then
@@ -32,13 +26,10 @@ end
 carregarConfigOutfit()
 
 local function isAura(id) return storageProfilesOutfit.auras[tostring(id)] == true end
-local function isFavorito(id)
-    for _, v in ipairs(storageProfilesOutfit.favoritos) do if v.id == id then return true end end
-    return false
-end
+local function isFavorito(id) for _, v in ipairs(storageProfilesOutfit.favoritos) do if v.id == id then return true end end return false end
 local function verificarLicenca() return keysValidas[storageProfilesOutfit.keyAtivacao] == true end
 
--- UI
+-- SINALIZADOR ATUALIZADO PARA 2
 outfitIcon = setupUI([[
 BotSwitch
   id: outfitSwitch
@@ -47,7 +38,7 @@ BotSwitch
   margin-right: 7
   margin-left: 7
   text-align: center
-  text: Visuais [Tuku]1
+  text: Visuais [Tuku]2
 ]], panel or modules.game_bot.contentsPanel)
 
 outfitInterface = setupUI([[
@@ -60,14 +51,14 @@ MainWindow
   Button {id: tabAuras, text: AURAS, anchors: {top: parent.top, left: tabGallery.right}, size: 90 24, margin: 5}
   Button {id: tabFavs, text: COLECAO, anchors: {top: parent.top, left: tabAuras.right}, size: 90 24, margin: 5}
   TextEdit {id: searchInput, anchors: {top: parent.top, right: parent.right}, size: 140 22, margin: 6, text-align: center}
-  TextList {id: itemScrollPanel, anchors: {left: parent.left, right: mainScrollBar.left, top: tabGallery.bottom, bottom: closeButton.top}, margin: 12, padding: 6, vertical-scrollbar: mainScrollBar, layout: {type: grid, cell-size: 82 135, flow: true}}
+  TextList {id: itemScrollPanel, anchors: {left: parent.left, right: mainScrollBar.left, top: tabGallery.bottom, bottom: closeButton.top}, margin: 12, padding: 6, vertical-scrollbar: mainScrollBar, layout: {type: grid, cell-size: 94 135, flow: true}}
   VerticalScrollBar {id: mainScrollBar, anchors: {top: itemScrollPanel.top, bottom: itemScrollPanel.bottom, right: parent.right}, step: 60}
   Button {id: closeButton, text: FECHAR, anchors: {right: parent.right, bottom: parent.bottom}, size: 65 22}
 ]], g_ui.getRootWidget())
 
 g_ui.loadUIFromString([[
 TukuStudioWidget < UIWidget
-  size: 82 135
+  size: 94 135
   background-color: #1c1c1c
   border: 1 #282828
   margin: 2
@@ -101,15 +92,25 @@ local function addWidget(id)
     end
 end
 
-function refreshGrid()
-    outfitInterface.itemScrollPanel:destroyChildren()
-    for i = 1, maxOutfits do
+function loadBatch()
+    local count = 0
+    local start = (currentBatch - 1) * batchSize + 1
+    for i = start, maxOutfits do
+        if count >= batchSize then break end
         local isA = isAura(i)
         local show = (mode == "gallery" and not isA) or (mode == "auras" and isA) or (mode == "favs" and isFavorito(i))
-        if show and (filtroTexto == "" or tostring(i):find(filtroTexto)) then addWidget(i) end
+        if show and (filtroTexto == "" or tostring(i):find(filtroTexto)) then addWidget(i) count = count + 1 end
     end
+    currentBatch = currentBatch + 1
 end
 
+function refreshGrid()
+    outfitInterface.itemScrollPanel:destroyChildren()
+    currentBatch = 1
+    loadBatch()
+end
+
+outfitInterface.mainScrollBar.onScrollChange = function(w, v) if v >= w:getMaximum() - 50 then loadBatch() end end
 outfitInterface.searchInput.onTextChange = function(w, t) filtroTexto = t:trim() refreshGrid() end
 outfitInterface.tabGallery.onClick = function() mode="gallery" refreshGrid() end
 outfitInterface.tabAuras.onClick = function() mode="auras" refreshGrid() end
