@@ -11,7 +11,10 @@ local function verificarLicenca(callback)
     if storageProfilesOutfit.keyAtivacao == "" then callback(false) return end
     
     HTTP.get(URL_VALIDADOR .. "?key=" .. storageProfilesOutfit.keyAtivacao, function(code, body)
-        if body == "VALIDO" then
+        -- Limpa a resposta de espaços ou caracteres invisíveis
+        local respostaLimpa = tostring(body):gsub("%s+", "")
+        
+        if respostaLimpa:find("VALIDO") then
             callback(true)
         else
             callback(false)
@@ -100,7 +103,7 @@ BotSwitch
   margin-right: 7
   margin-left: 7
   text-align: center
-  text: Visuais [Tuku]
+  text: Visuais [Tuku]2
 ]], panel or modules.game_bot.contentsPanel)
 
 outfitInterface = setupUI([[
