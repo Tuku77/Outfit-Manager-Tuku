@@ -9,6 +9,7 @@ local keysValidas = {["TUKU-CHAVE-MESTRA"] = true, ["TUKU-TESTE"] = true, ["NOVA
 local maxOutfits = 2176 
 local currentBatch = 1
 local batchSize = 40
+local saveTimer = nil
 
 local function carregarConfigOutfit()
     if g_resources.fileExists(STORAGE_DIRECTORY_OUTFIT) then
@@ -20,8 +21,12 @@ local function carregarConfigOutfit()
     end
 end
 
+-- Salvamento com Debounce (só salva após 2 segundos de inatividade)
 local function salvarConfigOutfit()
-    pcall(function() g_resources.writeFileContents(STORAGE_DIRECTORY_OUTFIT, json.encode(storageProfilesOutfit, 2)) end)
+    if saveTimer then saveTimer:cancel() end
+    saveTimer = schedule(2000, function()
+        pcall(function() g_resources.writeFileContents(STORAGE_DIRECTORY_OUTFIT, json.encode(storageProfilesOutfit, 2)) end)
+    end)
 end
 carregarConfigOutfit()
 
@@ -29,23 +34,12 @@ local function isAura(id) return storageProfilesOutfit.auras[tostring(id)] == tr
 local function isFavorito(id) for _, v in ipairs(storageProfilesOutfit.favoritos) do if v.id == id then return true end end return false end
 local function verificarLicenca() return keysValidas[storageProfilesOutfit.keyAtivacao] == true end
 
-keyInterface = setupUI([[
-MainWindow
-  text: Ativacao de Licenca
-  size: 260 120
-  anchors.centerIn: parent
-  visible: false
-  TextEdit {id: keyInput, anchors: {left: parent.left, right: parent.right, top: parent.top}, margin-top: 15, text-align: center}
-  Button {id: btnAtivar, text: Desbloquear Script, anchors: {left: parent.left, right: parent.right, top: keyInput.bottom}, margin-top: 12}
-]], g_ui.getRootWidget())
-
--- FORÇANDO A CRIAÇÃO DO BOTÃO NA BARRA LATERAL DO BOT
 outfitIcon = setupUI([[
 BotSwitch
   height: 20
   margin: 3
   text-align: center
-  text: Visuais [Tuku]1
+  text: Visuais [Tuku]2
 ]], modules.game_bot.contentsPanel)
 
 outfitInterface = setupUI([[
@@ -117,15 +111,8 @@ function refreshGrid()
     loadBatch()
 end
 
-keyInterface.btnAtivar.onClick = function()
-    local d = keyInterface.keyInput:getText():trim()
-    if keysValidas[d] then storageProfilesOutfit.keyAtivacao = d salvarConfigOutfit() keyInterface:hide() refreshGrid()
-    else modules.game_textmessage.displayFailureMessage("[ERRO] Chave Invalida") end
-end
-
-outfitIcon:setOn(storageProfilesOutfit.ativo)
 outfitIcon.onMouseRelease = function(w, mPos, mBtn)
-    if not verificarLicenca() then keyInterface:show() keyInterface:raise() keyInterface:focus() return true end
+    if not verificarLicenca() then return true end
     if mBtn == 1 then storageProfilesOutfit.ativo = not storageProfilesOutfit.ativo w:setOn(storageProfilesOutfit.ativo) salvarConfigOutfit()
     elseif mBtn == 2 then outfitInterface:show() outfitInterface:raise() outfitInterface:focus() refreshGrid() end
     return true
