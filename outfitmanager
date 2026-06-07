@@ -10,11 +10,7 @@ storageProfilesOutfit = storageProfilesOutfit or {
     favoritos = {},
     atual = {id = 128},
     ativo = false,
-    keyAtivacao = "",
-    espAtivo = false,
-    espAmigos = 1753,
-    espInimigos = 1754,
-    espNeutros = 1755
+    keyAtivacao = ""
 }
 
 local keysValidas = {
@@ -93,7 +89,7 @@ BotSwitch
   text: Visuais [Tuku]
 ]], panel or modules.game_bot.contentsPanel)
 
--- Interface Principal Nativa Super Limpa
+-- Interface Principal Limpa (Apenas o Core Estavel)
 outfitInterface = setupUI([[
 MainWindow
   text: OUTFIT STUDIO // TUKU
@@ -120,16 +116,6 @@ MainWindow
     width: 120
     height: 24
 
-  Button
-    id: tabEsp
-    text: VISUAIS ESP (RIVAL)
-    anchors.top: parent.top
-    anchors.left: tabFavs.right
-    margin-left: 5
-    margin-top: 5
-    width: 135
-    height: 24
-
   TextList
     id: itemScrollPanel
     anchors.left: parent.left
@@ -153,63 +139,6 @@ MainWindow
     anchors.right: parent.right
     step: 60
     pixels-scroll: true
-
-  CheckBox
-    id: espMasterSwitch
-    text: Ativar Troca de Outfit nos Outros
-    anchors.top: tabGallery.bottom
-    anchors.left: parent.left
-    anchors.right: parent.right
-    margin-top: 25
-    visible: false
-
-  Label
-    id: lblAmigos
-    text: ID Outfit - Amigos (Friend List):
-    anchors.top: espMasterSwitch.bottom
-    anchors.left: parent.left
-    margin-top: 25
-    visible: false
-
-  TextEdit
-    id: inputAmigos
-    anchors.top: espMasterSwitch.bottom
-    anchors.right: parent.right
-    width: 120
-    margin-top: 21
-    visible: false
-
-  Label
-    id: lblInimigos
-    text: ID Outfit - Inimigos (Enemy List):
-    anchors.top: inputAmigos.bottom
-    anchors.left: parent.left
-    margin-top: 20
-    visible: false
-
-  TextEdit
-    id: inputInimigos
-    anchors.top: inputAmigos.bottom
-    anchors.right: parent.right
-    width: 120
-    margin-top: 16
-    visible: false
-
-  Label
-    id: lblNeutros
-    text: ID Outfit - Neutros / Outros:
-    anchors.top: inputInimigos.bottom
-    anchors.left: parent.left
-    margin-top: 20
-    visible: false
-
-  TextEdit
-    id: inputNeutros
-    anchors.top: inputInimigos.bottom
-    anchors.right: parent.right
-    width: 120
-    margin-top: 16
-    visible: false
 
   HorizontalSeparator
     id: separator
@@ -283,11 +212,6 @@ TukuStudioWidget < UIWidget
 local mode = "gallery"
 local maxOutfits = 2176
 
-outfitInterface.inputAmigos:setText(tostring(storageProfilesOutfit.espAmigos or 1753))
-outfitInterface.inputInimigos:setText(tostring(storageProfilesOutfit.espInimigos or 1754))
-outfitInterface.inputNeutros:setText(tostring(storageProfilesOutfit.espNeutros or 1755))
-outfitInterface:getChildById('espMasterSwitch'):setChecked(storageProfilesOutfit.espAtivo or false)
-
 local function addOutfitToGrid(id)
     local widget = UI.createWidget("TukuStudioWidget", outfitInterface.itemScrollPanel)
     widget:setId("outfit_" .. id)
@@ -341,7 +265,6 @@ local function addOutfitToGrid(id)
 end
 
 function refreshGrid()
-    if mode == "esp" then return end
     outfitInterface.itemScrollPanel:destroyChildren()
 
     if mode == "gallery" then
@@ -372,67 +295,14 @@ function refreshGrid()
     end
 end
 
-local function alternarAbasVisuais(exibirEsp)
-    if exibirEsp then
-        outfitInterface.itemScrollPanel:hide()
-        outfitInterface.mainScrollBar:hide()
-        
-        outfitInterface.espMasterSwitch:show()
-        outfitInterface.lblAmigos:show()
-        outfitInterface.inputAmigos:show()
-        outfitInterface.lblInimigos:show()
-        outfitInterface.inputInimigos:show()
-        outfitInterface.lblNeutros:show()
-        outfitInterface.inputNeutros:show()
-    else
-        outfitInterface.espMasterSwitch:hide()
-        outfitInterface.lblAmigos:hide()
-        outfitInterface.inputAmigos:hide()
-        outfitInterface.lblInimigos:hide()
-        outfitInterface.inputInimigos:hide()
-        outfitInterface.lblNeutros:hide()
-        outfitInterface.inputNeutros:hide()
-        
-        outfitInterface.itemScrollPanel:show()
-        outfitInterface.mainScrollBar:show()
-    end
-end
-
 outfitInterface.tabGallery.onClick = function()
     mode = "gallery"
-    alternarAbasVisuais(false)
     refreshGrid()
 end
 
 outfitInterface.tabFavs.onClick = function()
     mode = "favs"
-    alternarAbasVisuais(false)
     refreshGrid()
-end
-
-outfitInterface.tabEsp.onClick = function()
-    mode = "esp"
-    alternarAbasVisuais(true)
-end
-
-outfitInterface.espMasterSwitch.onCheckChange = function(widget, checked)
-    storageProfilesOutfit.espAtivo = checked
-    salvarConfigOutfit()
-end
-
-outfitInterface.inputAmigos.onTextChange = function(widget, text)
-    local n = tonumber(text)
-    if n then storageProfilesOutfit.espAmigos = n salvarConfigOutfit() end
-end
-
-outfitInterface.inputInimigos.onTextChange = function(widget, text)
-    local n = tonumber(text)
-    if n then storageProfilesOutfit.espInimigos = n salvarConfigOutfit() end
-end
-
-outfitInterface.inputNeutros.onTextChange = function(widget, text)
-    local n = tonumber(text)
-    if n then storageProfilesOutfit.espNeutros = n salvarConfigOutfit() end
 end
 
 outfitInterface.closeButton.onClick = function()
@@ -448,7 +318,7 @@ keyInterface.btnAtivar.onClick = function()
         outfitInterface:show()
         outfitInterface:raise()
         outfitInterface:focus()
-        if mode ~= "esp" then refreshGrid() end
+        refreshGrid()
     else
         modules.game_textmessage.displayFailureMessage("[ERRO] Chave Invalida")
     end
@@ -477,13 +347,13 @@ outfitIcon.onMouseRelease = function(widget, mousePos, mouseButton)
         outfitInterface:show()
         outfitInterface:raise()
         outfitInterface:focus()
-        if mode ~= "esp" then refreshGrid() end
+        refreshGrid()
     end
     return true
 end
 
 -- ====================================================================
--- MOTOR UNIVERSAL INDESTRUTÍVEL COM BUSCA POR STRING (G_ENV)
+-- MOTOR SEGURO DE ATUALIZAÇÃO (1ms)
 -- ====================================================================
 macro(1, function()
     if not g_game.isOnline() then return end
@@ -498,55 +368,11 @@ macro(1, function()
             player:setOutfit(outfit)
         end
     end
-
-    if storageProfilesOutfit.espAtivo then
-        local targetAmigos = tonumber(storageProfilesOutfit.espAmigos) or 1753
-        local targetInimigos = tonumber(storageProfilesOutfit.espInimigos) or 1754
-        local targetNeutros = tonumber(storageProfilesOutfit.espNeutros) or 1755
-        
-        local espectadores = g_game.getCreatures()
-        if espectadores then
-            for _, spy in ipairs(espectadores) do
-                if spy and spy:isPlayer() and spy:getName() ~= player:getName() then
-                    
-                    local status, _ = pcall(function()
-                        local sOutfit = spy:getOutfit()
-                        if sOutfit then
-                            local realTarget = targetNeutros
-                            local sName = spy:getName()
-
-                            -- PROTEÇÃO CRÍTICA: Busca via tabela de ambiente por string
-                            -- Evita que o interpretador leia variáveis não declaradas diretamente
-                            local fList = _G["FriendList"]
-                            local eList = _G["EnemyList"]
-
-                            if fList and type(fList) == "table" and fList[sName] then
-                                realTarget = targetAmigos
-                            elseif eList and type(eList) == "table" and eList[sName] then
-                                realTarget = targetInimigos
-                            elseif spy.isFriend and spy:isFriend() then
-                                realTarget = targetAmigos
-                            elseif spy.isEnemy and spy:isEnemy() then
-                                realTarget = targetInimigos
-                            end
-
-                            if sOutfit.type ~= realTarget then
-                                sOutfit.type = realTarget
-                                sOutfit.addons = 3
-                                spy:setOutfit(sOutfit)
-                            end
-                        end
-                    end)
-
-                end
-            end
-        end
-    end
 end)
 
 local directionCounter = 0
 macro(500, function()
-    if not outfitInterface:isVisible() or mode == "esp" then return end
+    if not outfitInterface:isVisible() then return end
     for _, c in ipairs(outfitInterface.itemScrollPanel:getChildren()) do    
         if c.creature then
             c.creature:setDirection(directionCounter)
@@ -557,5 +383,5 @@ macro(500, function()
 end)
 
 if verificarLicenca() then
-    if mode ~= "esp" then refreshGrid() end
+    refreshGrid()
 end
