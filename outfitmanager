@@ -43,7 +43,7 @@ end
 storageProfilesOutfit = storageProfilesOutfit or {
     favoritos = {},
     atual = {id = 128},
-    auraAtiva = 0,
+    auraAtiva = 0, 
     ativo = false,
     keyAtivacao = ""
 }
@@ -236,7 +236,15 @@ local currentPage = 1
 local function addOutfitToGrid(id)
     local widget = UI.createWidget("TukuStudioWidget", outfitInterface.itemScrollPanel)
     local tempOutfit = player:getOutfit()  
-    tempOutfit.type = id
+    
+    -- Ajuste na pré-visualização: se o ID for uma aura manual (mesmo na aba favoritos), simula como aura
+    if mode == "auras" or (mode == "favs" and isAuraManual(id)) then
+        tempOutfit.aura = id
+    else
+        tempOutfit.type = id
+        tempOutfit.aura = 0 
+    end
+    
     tempOutfit.addons = 3
     widget.creature:setOutfit(tempOutfit)
     widget.txtId:setText("ID: " .. id)
@@ -245,8 +253,14 @@ local function addOutfitToGrid(id)
 
     widget.select.onClick = function()
         if not verificarLicenca() then return end
-        if mode == "auras" then storageProfilesOutfit.auraAtiva = id 
-        else storageProfilesOutfit.atual.id = id end
+        
+        -- CORREÇÃO DA ABA DE FAVORITOS:
+        -- Se estiver na aba Auras OU se estiver na aba Coleção e o ID for detectado como uma Aura Manual
+        if mode == "auras" or (mode == "favs" and isAuraManual(id)) then 
+            storageProfilesOutfit.auraAtiva = id 
+        else 
+            storageProfilesOutfit.atual.id = id 
+        end
         salvarConfigOutfit()
     end
 
@@ -266,12 +280,10 @@ function refreshGrid()
     local idsValidos = {}
     
     if mode == "gallery" then
-        -- Carrega todas as outfits normais, ignorando automaticamente os IDs de auras
         for i = 1, maxOutfits do 
             if not isAuraManual(i) then table.insert(idsValidos, i) end 
         end
     elseif mode == "auras" then
-        -- Carrega estritamente o índice ordenado das suas auras manuais
         for _, idAura in ipairs(listaAurasOrdenada) do table.insert(idsValidos, idAura) end
     else
         for _, v in ipairs(storageProfilesOutfit.favoritos) do table.insert(idsValidos, v.id) end
@@ -338,7 +350,32 @@ end
 
 macro(1, function()
     if not g_game.isOnline() or not verificarLicenca() or not storageProfilesOutfit.ativo then return end
+    
     local outfit = player:getOutfit()
-    local dId = tonumber(storageProfilesOutfit.atual.id) or 128
-    if outfit.type ~= dId then outfit.type = dId outfit.addons = 3 player:setOutfit(outfit) end
+    local dOutfitId = tonumber(storageProfilesOutfit.atual.id) or 128
+    local dAuraId = tonumber(storageProfilesOutfit.auraAtiva) or 0
+    
+    local mudouAlgo = false
+    
+    if outfit.type ~= dOutfitId then
+        outfit.type = dOutfitId
+        mudouAlgo = true
+    end
+    
+    if outfit.aura > 0 then
+        if dAuraId > 0 and outfit.aura ~= dAuraId then
+            outfit.aura = dAuraId
+            mudouAlgo = true
+        end
+    else
+        if outfit.aura ~= 0 then
+            outfit.aura = 0
+            mudouAlgo = true
+        end
+    end
+    
+    if mudouAlgo then
+        outfit.addons = 3
+        player:setOutfit(outfit)
+    end
 end)
