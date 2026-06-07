@@ -5,7 +5,7 @@ STORAGE_DIRECTORY_OUTFIT = MAIN_DIRECTORY .. 'profile_outfit_studio_' .. charact
 -- ==========================================
 -- CONFIGURAÇÃO DE VALIDAÇÃO VIA SERVIDOR
 -- ==========================================
-local URL_VALIDADOR = "https://script.google.com/macros/s/AKfycbzSNEW3KPJQ1XX9vbctkT3hezMLVPfDbLXBnHekI6B8yGa95_IREWJapsDPf5mLOQio4g/exec"
+local URL_VALIDADOR = "https://script.google.com/macros/s/AKfycbx_cmCasUA1bsBHSxf2eiBE3rBx7ANRoKTWhK83lsyCngWYSFb8tbby8uJ461TA0gC8Bw/exec"
 local licencaValida = false 
 
 local function validarServidor(callback)
@@ -105,7 +105,7 @@ BotSwitch
   margin-right: 7
   margin-left: 7
   text-align: center
-  text: Visuais [Tuku]1
+  text: Visuais [Tuku]
 ]], panel or modules.game_bot.contentsPanel)
 
 outfitInterface = setupUI([[
